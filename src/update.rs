@@ -256,13 +256,25 @@ pub fn apply(app_dir: &Path, local: &AppConfig, manifest: &Manifest, fetched: &B
     Ok(changed)
 }
 
-/// Where this Kobo looks for its bundle.
+/// Where this Kobo looks for its bundle: the setup tool's update server if
+/// one is named, otherwise the folder Home Assistant serves.
 pub fn base_url(config: &AppConfig) -> String {
-    format!("{}/local/{}", config.home_assistant.url.trim_end_matches('/'), FOLDER)
+    let direct = config.updates.url.trim().trim_end_matches('/');
+    if direct.is_empty() {
+        format!("{}/local/{}", config.home_assistant.url.trim_end_matches('/'), FOLDER)
+    } else {
+        direct.to_string()
+    }
 }
 
 pub fn active(config: &AppConfig) -> bool {
-    config.updates.enabled && !config.updates.key.is_empty() && !config.home_assistant.url.is_empty()
+    let somewhere = !config.updates.url.trim().is_empty() || !config.home_assistant.url.is_empty();
+    config.updates.enabled && !config.updates.key.is_empty() && somewhere
+}
+
+/// Whether `name` is something an update server may hand out.
+pub fn servable(name: &str) -> bool {
+    FILES.contains(&name) || name == "manifest.json" || name == "manifest.sig"
 }
 
 async fn fetch(client: &reqwest::Client, url: &str, limit: u64) -> Result<Vec<u8>, String> {
@@ -383,6 +395,16 @@ mod tests {
         let now: AppConfig = serde_yaml::from_str(&std::fs::read_to_string(kobo.join(CONFIG)).unwrap()).unwrap();
         assert_eq!((now.pages.len(), now.home_assistant.token.as_str()), (pc.pages.len(), "SECRET-TOKEN"));
         assert_eq!(check(&now, &kobo).await, Ok(false), "already applied");
+
+        // The setup tool's own update server instead of Home Assistant's folder
+        let mut direct = now.clone();
+        direct.updates.url = format!("http://127.0.0.1:{}/local/kobo-ha/", port);
+        direct.home_assistant.url = "http://192.0.2.1:8123".to_string();
+        assert_eq!(base_url(&direct), format!("http://127.0.0.1:{}/local/kobo-ha", port));
+        publish(&bundle, &pc, &program, "#!/bin/sh\n# newer\n", "w", 600).unwrap();
+        assert_eq!(check(&direct, &kobo).await, Ok(true));
+        assert_eq!(load_state(&kobo).serial, 600);
+        assert!(servable("manifest.sig") && servable(PROGRAM) && !servable("../config.yaml") && !servable("backups"));
 
         // Updates switched off, or no key: it does not even look
         let mut off = now.clone();

@@ -49,6 +49,12 @@ struct Inner {
     loaded_font: Mutex<Option<String>>,
     /// Fired by the "Quit" button to stop the server.
     shutdown: tokio::sync::Notify,
+    /// Port of the setup page; the update server takes the next one.
+    port: u16,
+    /// Port of the running update server, once it has been started
+    update_server: Mutex<Option<u16>>,
+    /// Serial of the newest bundle a Kobo has fetched from the update server
+    fetched_serial: Arc<std::sync::atomic::AtomicU64>,
 }
 
 type Shared = Arc<Inner>;
@@ -79,7 +85,17 @@ pub async fn start_setup_server(
         render_lock: Mutex::new(()),
         loaded_font: Mutex::new(None),
         shutdown: tokio::sync::Notify::new(),
+        port,
+        update_server: Mutex::new(None),
+        fetched_serial: Arc::new(std::sync::atomic::AtomicU64::new(0)),
     });
+    // A Kobo set to fetch from this computer can catch up as soon as the
+    // tool is open again.
+    if !state.draft.read().await.updates.url.is_empty() && bundle_dir(&state).join("manifest.json").exists() {
+        if let Err(e) = ensure_update_server(&state).await {
+            tracing::warn!("Update server not started: {}", e);
+        }
+    }
 
     let app = Router::new()
         .route("/", get(|| async { Html(EDITOR_HTML) }))
@@ -97,6 +113,7 @@ pub async fn start_setup_server(
         .route("/api/kobo", get(list_kobos))
         .route("/api/kobo/install", post(install_kobo))
         .route("/api/publish", post(publish_update))
+        .route("/api/publish/status", get(publish_status))
         .route("/api/kobo/import", post(import_kobo))
         .route("/api/kobo/nickelmenu", post(install_nickelmenu))
         .route("/api/fonts/ensure", post(ensure_font))
@@ -459,41 +476,138 @@ async fn install_kobo(State(s): State<Shared>, Json(req): Json<InstallRequest>) 
 
 #[derive(Deserialize)]
 struct PublishRequest {
+    /// "direct": the Kobo fetches from this tool. "folder": from a folder
+    /// Home Assistant serves, given in `dir`.
+    #[serde(default)]
+    mode: String,
+    #[serde(default)]
     dir: String,
 }
 
+/// Where bundles served straight from this computer are kept.
+fn bundle_dir(s: &Shared) -> PathBuf {
+    s.config_path.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or_else(|| Path::new(".")).join("published")
+}
+
+/// This computer's address on the network that leads to Home Assistant,
+/// which is the network the Kobo is on too.
+fn lan_ip_towards(ha_url: &str) -> Option<std::net::IpAddr> {
+    use std::net::ToSocketAddrs;
+    let rest = ha_url.split("://").nth(1).unwrap_or(ha_url);
+    let host = rest.split('/').next().unwrap_or("");
+    let target = if host.contains(':') { host.to_string() } else { format!("{}:8123", host) };
+    let addr = target.to_socket_addrs().ok()?.find(|a| a.is_ipv4())?;
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
+    // Nothing is sent: connecting a UDP socket only picks the route.
+    socket.connect(addr).ok()?;
+    socket.local_addr().ok().map(|a| a.ip()).filter(|ip| !ip.is_loopback() && !ip.is_unspecified())
+}
+
+/// Start the update server if it is not running: a second, separate listener
+/// reachable from the network that hands out the signed bundle and nothing
+/// else. The setup page itself, which handles the Home Assistant token, stays
+/// on localhost.
+async fn ensure_update_server(s: &Shared) -> Result<u16, String> {
+    let mut running = s.update_server.lock().await;
+    if let Some(port) = *running {
+        return Ok(port);
+    }
+    let port = s.port.checked_add(1).ok_or("no port left for the update server")?;
+    let listener = tokio::net::TcpListener::bind(SocketAddr::from(([0, 0, 0, 0], port)))
+        .await
+        .map_err(|e| format!("port {}: {}", port, e))?;
+    let dir = bundle_dir(s);
+    let fetched = s.fetched_serial.clone();
+    let app = Router::new().route(
+        "/kobo-ha/:name",
+        get(move |axum::extract::Path(name): axum::extract::Path<String>, Query(q): Query<std::collections::HashMap<String, String>>| {
+            let (dir, fetched) = (dir.clone(), fetched.clone());
+            async move {
+                if !crate::update::servable(&name) {
+                    return Err(StatusCode::NOT_FOUND);
+                }
+                let bytes = std::fs::read(dir.join(&name)).map_err(|_| StatusCode::NOT_FOUND)?;
+                // A Kobo asks for the layout of every bundle it takes, naming
+                // the bundle's serial: that is how the page knows it arrived.
+                if name == crate::update::CONFIG {
+                    if let Some(serial) = q.get("t").and_then(|t| t.parse::<u64>().ok()) {
+                        fetched.fetch_max(serial, std::sync::atomic::Ordering::Relaxed);
+                    }
+                }
+                Ok(bytes)
+            }
+        }),
+    );
+    tokio::spawn(async move {
+        if let Err(e) = axum::serve(listener, app).await {
+            tracing::warn!("Update server stopped: {}", e);
+        }
+    });
+    println!("  Update server for the Kobo: port {}", port);
+    *running = Some(port);
+    Ok(port)
+}
+
+async fn publish_status(State(s): State<Shared>) -> Json<serde_json::Value> {
+    Json(serde_json::json!({ "fetched_serial": s.fetched_serial.load(std::sync::atomic::Ordering::Relaxed) }))
+}
+
 /// Publish a signed update bundle (layout, Kobo program, launcher scripts)
-/// into the folder Home Assistant serves, for the Kobo to fetch over Wi-Fi.
+/// for the Kobo to fetch over Wi-Fi: from this tool's own update server, or
+/// from a folder Home Assistant serves.
 async fn publish_update(State(s): State<Shared>, Json(req): Json<PublishRequest>) -> Response {
     let Some(binary) = s.kobo_binary.clone() else {
         return bad_request_key("binary_missing", "The Kobo program was not found next to the setup tool.", serde_json::json!({}));
     };
     let failed = |e: String| bad_request_key("publish_failed", &e, serde_json::json!({ "error": e }));
-    let dir = req.dir.trim().to_string();
-    if dir.is_empty() {
-        return failed("no folder given".to_string());
-    }
-    // The first publish creates the key that signs every later one.
-    let first = {
+    let direct = req.mode != "folder";
+    let (dir, url) = if direct {
+        let ha_url = s.draft.read().await.home_assistant.url.clone();
+        let Some(ip) = lan_ip_towards(&ha_url) else {
+            return failed("could not work out this computer's network address; check the Home Assistant URL".to_string());
+        };
+        match ensure_update_server(&s).await {
+            Ok(port) => (bundle_dir(&s), format!("http://{}:{}/kobo-ha", ip, port)),
+            Err(e) => return failed(e),
+        }
+    } else {
+        let dir = req.dir.trim();
+        if dir.is_empty() {
+            return failed("no folder given".to_string());
+        }
+        (PathBuf::from(dir), String::new())
+    };
+    // The Kobo learns the key, and where to look, over USB: say so whenever
+    // either is new to it.
+    let needs_usb = {
         let mut draft = s.draft.write().await;
-        let first = draft.updates.key.is_empty();
-        if first {
+        let mut changed = !draft.updates.enabled || draft.updates.url != url;
+        if draft.updates.key.is_empty() {
             match crate::update::new_key() {
                 Ok(key) => draft.updates.key = key,
                 Err(e) => return failed(e),
             }
+            changed = true;
         }
         draft.updates.enabled = true;
-        draft.updates.publish_dir = dir.clone();
-        first
+        draft.updates.url = url.clone();
+        draft.updates.publish_dir = if direct { String::new() } else { dir.display().to_string() };
+        changed
     };
     if let Err(e) = write_draft(&s).await {
         return bad_request_key("save_failed", &e, serde_json::json!({ "error": e }));
     }
     let config = s.draft.read().await.clone();
     let serial = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0);
-    match crate::update::publish(Path::new(&dir), &config, &binary, kobo::LAUNCH_SH, kobo::WIFI_SH, serial) {
-        Ok(m) => Json(serde_json::json!({ "updates": config.updates, "first": first, "serial": m.serial, "url": crate::update::base_url(&config) })).into_response(),
+    match crate::update::publish(&dir, &config, &binary, kobo::LAUNCH_SH, kobo::WIFI_SH, serial) {
+        Ok(m) => Json(serde_json::json!({
+            "updates": config.updates,
+            "needs_usb": needs_usb,
+            "direct": direct,
+            "serial": m.serial,
+            "url": crate::update::base_url(&config),
+        }))
+        .into_response(),
         Err(e) => failed(e),
     }
 }

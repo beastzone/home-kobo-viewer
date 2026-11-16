@@ -77,40 +77,65 @@ What a tap does on the Kobo:
 
 After one USB install, the Kobo can receive everything else without a cable:
 layout changes (pages, cards, the floorplan) and new versions of the
-dashboard program itself.
+dashboard program itself. There are two ways to send them; the first is the
+default and needs nothing set up in Home Assistant.
 
-**How it travels.** The setup tool publishes a bundle into a folder that Home
-Assistant serves, and the Kobo downloads it from there:
+### Straight from the computer (default)
+
+The setup tool runs a small update server and the Kobo downloads from it.
 
 ```
-setup tool on the PC  ──writes──▶  Home Assistant  config/www/kobo-ha/
-                                              │  served as /local/kobo-ha/
-Kobo  ◀──────────── downloads over Wi-Fi ─────┘
+Kobo  ◀──── downloads over Wi-Fi ────  setup tool on the PC (port 3001)
 ```
 
 **One-time setup**
 
+1. In the setup tool's **Install** step, under *Send over Wi-Fi*, leave *How to
+   send* on **Straight from this computer** and click **Send over Wi-Fi**. If
+   Windows asks whether to allow the program on the network, allow it on
+   private networks. The first time, this creates an update key.
+2. Install by USB once more, so the Kobo receives the key and this computer's
+   address.
+3. In your router, give this computer a fixed address (DHCP reservation). The
+   Kobo looks for updates at that address; if it changes, send again and
+   install by USB once more.
+
+**From then on**: change anything in the setup tool and click **Send over
+Wi-Fi**, then keep the window open. The Kobo checks every five minutes while
+the dashboard is open, and immediately when you tap its refresh button; the
+page says "The Kobo has taken the update" when it has. For a new version of
+the app, download the new package, copy your `config.yaml` into its folder,
+run its setup tool and click the same button.
+
+The update server is a separate listener that hands out the signed bundle and
+nothing else. The setup page itself, which handles your Home Assistant token,
+stays reachable only from the computer it runs on.
+
+### Through a Home Assistant folder
+
+Choose **Through a Home Assistant folder** if you would rather not keep the
+setup tool open: the bundle is written into a folder Home Assistant serves,
+and the Kobo downloads it from there whenever it next looks.
+
 1. In Home Assistant, install the **Samba share** add-on so the PC can reach
    the `config` folder. Create a `www` folder inside it if there is none and
    restart Home Assistant once (it only starts serving `www` at boot).
-2. In the setup tool's **Install** step, under *Send over Wi-Fi*, check the
-   folder (it suggests `\\<home-assistant>\config\www\kobo-ha`; open that
-   address in File Explorer once so Windows signs in to the share) and click
-   **Send over Wi-Fi**. The first time, this creates an update key.
-3. Install by USB once more, so the Kobo receives that key.
+2. Check the folder the setup tool suggests
+   (`\\<home-assistant>\config\www\kobo-ha`; open that address in File
+   Explorer once so Windows signs in to the share) and click **Send over
+   Wi-Fi**.
+3. Install by USB once more.
 
-**From then on**: change anything in the setup tool and click **Send over
-Wi-Fi**. For a new version of the app, download the new package, run its
-setup tool and click the same button. The Kobo checks every five minutes
-while the dashboard is open, and immediately when you tap its refresh button;
-it then restarts the dashboard by itself to take the update up.
+Home Assistant serves that folder without a login, so anyone on your network
+can read the published layout (page names, entity ids), though never the
+token or the key. File sharing from a Windows PC to a Home Assistant virtual
+machine running on that same PC is unreliable; use the first way there.
 
 **What keeps it safe**
 
-- Home Assistant serves that folder without a login, so the published layout
-  carries no secrets: the Home Assistant token and the update key are removed,
-  and the Kobo keeps its own. Anyone on your network can still read the
-  layout itself (page names, entity ids).
+- Neither route asks the Kobo to log in, so the published layout carries no
+  secrets: the Home Assistant token and the update key are removed, and the
+  Kobo keeps its own.
 - Every bundle is signed with the update key, which only the PC and the Kobo
   hold. The Kobo ignores a bundle whose signature is wrong, any file that
   does not match its signed hash, anything older than what it already has,
@@ -147,10 +172,14 @@ reinstalling it after a Kobo software update), and the name of the menu entry.
   in a desktop browser.
 - The lock, remote and floorplan cards have not been used against a real Home
   Assistant; they were tested with simulated devices.
-- Updates over Wi-Fi were tested on a computer: a real download over HTTP, the
-  signature and hash checks, and the launcher's swap and rollback run with
-  stand-in programs. They have not been tried on a Kobo, on the Kobo's own
-  shell, or through a real Home Assistant and Samba share.
+- Updates over Wi-Fi were tested on a computer: a real download over HTTP from
+  the setup tool's update server, the signature and hash checks, and the
+  launcher's swap and rollback run with stand-in programs. They have not been
+  tried on a Kobo, on the Kobo's own shell, or across a real home network.
+  Publishing through a Home Assistant folder could not be completed on the
+  one real setup it was tried on (Windows could not open the Samba share of a
+  Home Assistant VM hosted on the same PC), which is why sending straight
+  from the computer is the default.
 
 ## Install (Windows PC + Kobo)
 
@@ -200,7 +229,7 @@ cargo run -- --simulator   # interactive preview with demo data
 
 Every push to `main` runs `.github/workflows/release.yml`, which builds the
 Kobo program and the Windows and Linux setup tools and publishes them as the
-release for the version in `Cargo.toml` (`v0.5.1`, ...). Raise that version to
+release for the version in `Cargo.toml` (`v0.5.2`, ...). Raise that version to
 get a new release; pushes without a version change refresh the files of the
 existing one.
 

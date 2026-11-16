@@ -30,8 +30,12 @@ pub struct UpdatesConfig {
     /// is never published.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub key: String,
-    /// On the computer: the folder updates are published into, normally
-    /// Home Assistant's `config/www/kobo-ha`
+    /// Where the Kobo fetches updates, when not from Home Assistant: the
+    /// setup tool's own update server, e.g. `http://192.168.1.20:3001/kobo-ha`
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub url: String,
+    /// On the computer, when publishing through Home Assistant: the folder
+    /// updates are written into, normally its `config/www/kobo-ha`
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub publish_dir: String,
     /// How often the Kobo looks, in seconds (0 = the default)
