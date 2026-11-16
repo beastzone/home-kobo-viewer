@@ -75,3 +75,17 @@ sleep:
   wake_hint: "Ein-/Aus-Taste drücken, um das Dashboard aufzuwecken"
   battery_empty: "Akku leer"
   charge_hint: "Kobo zum Fortfahren ans Ladegerät anschließen"
+
+lock:
+  default_title: "Schloss"
+  locked: "Verriegelt"
+  unlocked: "Entriegelt"
+  locking: "Verriegelt…"
+  unlocking: "Entriegelt…"
+  jammed: "Blockiert"
+  confirm: "Zum Entriegeln erneut tippen"
+  action_lock: "Verriegeln"
+  action_unlock: "Entriegeln"
+
+remote:
+  default_title: "Fernbedienung"

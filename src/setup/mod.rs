@@ -576,7 +576,7 @@ mod tests {
     #[test]
     fn every_card_type_has_a_label() {
         let strings = i18n::setup_strings("en");
-        for t in ["weather", "light", "switch", "climate", "sensor", "sensor_grid", "media_player", "scenes_row", "scene"] {
+        for t in ["weather", "light", "switch", "climate", "sensor", "sensor_grid", "media_player", "lock", "remote", "scenes_row", "scene"] {
             assert!(strings.contains_key(&format!("card_types.{}", t)), "card_types.{} missing", t);
         }
     }

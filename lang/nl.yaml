@@ -75,3 +75,17 @@ sleep:
   wake_hint: "Druk op de aan/uit-knop om het dashboard te wekken"
   battery_empty: "Batterij leeg"
   charge_hint: "Sluit de Kobo aan om verder te gaan"
+
+lock:
+  default_title: "Slot"
+  locked: "Vergrendeld"
+  unlocked: "Ontgrendeld"
+  locking: "Vergrendelen…"
+  unlocking: "Ontgrendelen…"
+  jammed: "Geblokkeerd"
+  confirm: "Tik nogmaals om te ontgrendelen"
+  action_lock: "Vergrendelen"
+  action_unlock: "Ontgrendelen"
+
+remote:
+  default_title: "Afstandsbediening"

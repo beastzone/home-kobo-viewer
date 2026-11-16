@@ -191,6 +191,8 @@ card_types:
   sensor: "Sensör"
   sensor_grid: "Sensör ızgarası"
   media_player: "Medya oynatıcı"
+  lock: "Kapı kilidi"
+  remote: "TV kumandası"
   scenes_row: "Sahne butonları"
   scene: "Tek buton"
 

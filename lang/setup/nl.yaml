@@ -191,6 +191,8 @@ card_types:
   sensor: "Sensor"
   sensor_grid: "Sensorraster"
   media_player: "Mediaspeler"
+  lock: "Deurslot"
+  remote: "Tv-afstandsbediening"
   scenes_row: "Scèneknoppen"
   scene: "Losse knop"
 

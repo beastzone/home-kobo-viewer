@@ -191,6 +191,8 @@ card_types:
   sensor: "Capteur"
   sensor_grid: "Grille de capteurs"
   media_player: "Lecteur multimédia"
+  lock: "Serrure"
+  remote: "Télécommande TV"
   scenes_row: "Boutons de scène"
   scene: "Bouton unique"
 

@@ -191,6 +191,8 @@ card_types:
   sensor: "传感器"
   sensor_grid: "传感器网格"
   media_player: "媒体播放器"
+  lock: "门锁"
+  remote: "电视遥控器"
   scenes_row: "场景按钮"
   scene: "单个按钮"
 

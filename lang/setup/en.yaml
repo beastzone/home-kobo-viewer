@@ -195,6 +195,8 @@ card_types:
   sensor: "Sensor"
   sensor_grid: "Sensor grid"
   media_player: "Media player"
+  lock: "Door lock"
+  remote: "TV remote"
   scenes_row: "Scene buttons"
   scene: "Single button"
 

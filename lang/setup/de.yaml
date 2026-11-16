@@ -191,6 +191,8 @@ card_types:
   sensor: "Sensor"
   sensor_grid: "Sensorraster"
   media_player: "Mediaplayer"
+  lock: "Türschloss"
+  remote: "TV-Fernbedienung"
   scenes_row: "Szenen-Tasten"
   scene: "Einzelne Taste"
 

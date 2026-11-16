@@ -33,6 +33,10 @@ pub enum UiAction {
     MediaNext(String),
     MediaPrevious(String),
     ActivateScene(String),
+    /// Lock card tapped: locks at once, unlocks on a second tap
+    LockTap(String),
+    /// Any other Home Assistant service call (remote keys...)
+    Service { domain: String, service: String, data: serde_json::Value },
     SwitchPage(usize),
     Refresh,
     ToggleFrontlight,

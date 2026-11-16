@@ -85,6 +85,8 @@ enum Command {
 
 /// Ignore taps arriving faster than this (e-ink ghost/bounce protection)
 const TAP_DEBOUNCE: Duration = Duration::from_millis(350);
+/// How long a lock card waits for the second tap that confirms an unlock
+const UNLOCK_CONFIRM: Duration = Duration::from_secs(6);
 /// For this long after a tap, pushed updates are drawn right away (so a
 /// toggled light shows its new state). Otherwise they wait for the next
 /// minute tick: a busy sensor can push every few seconds, and redrawing for
@@ -274,6 +276,7 @@ async fn run_device(
     // pixels count, so an unchanged screen never triggers a full flash.
     let mut partials: u32 = 0;
     let mut last_tap = Instant::now() - TAP_DEBOUNCE;
+    let mut unlock_armed: Option<(String, Instant)> = None;
     let mut flush = |fb: &mut Box<dyn display::FramebufferDriver>, canvas: &Canvas, force_full: bool| {
         let cycles = config.device.full_refresh_cycles;
         let refresh = if force_full {
@@ -711,6 +714,14 @@ async fn run_device(
 
                 let Some(action) = renderer.handle_touch(x, y) else { continue };
                 let mut force_full = false;
+                // A pending unlock is only confirmed by a second tap on the
+                // same lock, in time; anything else withdraws it.
+                let confirming = match (&action, &unlock_armed) {
+                    (UiAction::LockTap(id), Some((armed, at))) => armed == id && at.elapsed() <= UNLOCK_CONFIRM,
+                    _ => false,
+                };
+                unlock_armed = None;
+                renderer.unlock_armed = None;
                 let service = match action {
                     UiAction::ExitToReader => {
                         tracing::info!("Exit button tapped");
@@ -744,6 +755,26 @@ async fn run_device(
                     UiAction::MediaNext(id) => Some(media("media_next_track", &id)),
                     UiAction::MediaPrevious(id) => Some(media("media_previous_track", &id)),
                     UiAction::ActivateScene(id) => Some(ha_client.activate_request(&id)),
+                    UiAction::Service { domain, service, data } => Some((domain, service, data)),
+                    UiAction::LockTap(id) => {
+                        let state = ha_client.get_state(&id).await.map(|s| s.state).unwrap_or_default();
+                        let data = serde_json::json!({ "entity_id": id });
+                        if ui::widgets::lock_card::is_unlocked(&state) {
+                            Some(("lock".to_string(), "lock".to_string(), data))
+                        } else if confirming {
+                            Some(("lock".to_string(), "unlock".to_string(), data))
+                        } else {
+                            unlock_armed = Some((id.clone(), Instant::now()));
+                            renderer.unlock_armed = Some(id);
+                            // Wake the loop once the prompt has lapsed so it is taken down.
+                            let tx = wake_tx.clone();
+                            tokio::spawn(async move {
+                                tokio::time::sleep(UNLOCK_CONFIRM + Duration::from_millis(200)).await;
+                                let _ = tx.send(()).await;
+                            });
+                            None
+                        }
+                    }
                 };
 
                 if let Some((domain, svc, data)) = service {
@@ -768,6 +799,10 @@ async fn run_device(
                 // Several entities often change together: draw once for the batch.
                 tokio::time::sleep(Duration::from_millis(400)).await;
                 while wake_rx.try_recv().is_ok() {}
+                if unlock_armed.as_ref().is_some_and(|(_, at)| at.elapsed() > UNLOCK_CONFIRM) {
+                    unlock_armed = None;
+                    renderer.unlock_armed = None;
+                }
                 // When idle, the minute tick below draws the new states.
                 if last_activity.elapsed() < LIVE_REDRAW_WINDOW {
                     redraw(&mut renderer, &mut canvas, &config, active_page, &ha_client).await;

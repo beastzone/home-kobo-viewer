@@ -196,6 +196,20 @@ pub fn generate_mock_states() -> HashMap<String, EntityState> {
         },
     );
 
+    // Door lock and TV remote
+    for (id, state, name) in [("lock.front_door", "locked", "Front Door"), ("remote.living_room_tv", "on", "Living Room TV")] {
+        map.insert(
+            id.to_string(),
+            EntityState {
+                entity_id: id.to_string(),
+                state: state.to_string(),
+                attributes: serde_json::from_value(json!({ "friendly_name": name })).unwrap(),
+                last_changed: None,
+                last_updated: None,
+            },
+        );
+    }
+
     // 6. Media Player
     map.insert(
         "media_player.speaker".to_string(),

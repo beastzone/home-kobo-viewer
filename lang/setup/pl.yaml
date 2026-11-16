@@ -191,6 +191,8 @@ card_types:
   sensor: "Czujnik"
   sensor_grid: "Siatka czujników"
   media_player: "Odtwarzacz multimediów"
+  lock: "Zamek do drzwi"
+  remote: "Pilot TV"
   scenes_row: "Przyciski scen"
   scene: "Pojedynczy przycisk"
 

@@ -75,3 +75,17 @@ sleep:
   wake_hint: "Paneli uyandırmak için güç tuşuna basın"
   battery_empty: "Pil bitti"
   charge_hint: "Devam etmek için Kobo'yu şarja takın"
+
+lock:
+  default_title: "Kilit"
+  locked: "Kilitli"
+  unlocked: "Kilit açık"
+  locking: "Kilitleniyor…"
+  unlocking: "Kilit açılıyor…"
+  jammed: "Sıkıştı"
+  confirm: "Açmak için tekrar dokunun"
+  action_lock: "Kilitle"
+  action_unlock: "Kilidi aç"
+
+remote:
+  default_title: "Kumanda"

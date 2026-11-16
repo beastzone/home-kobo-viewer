@@ -140,6 +140,22 @@ async fn handle_touch(
                 let (domain, service, data) = state.ha_client.activate_request(&entity_id);
                 let _ = state.ha_client.call_service(&domain, &service, data).await;
             }
+            UiAction::Service { domain, service, data } => {
+                let _ = state.ha_client.call_service(&domain, &service, data).await;
+            }
+            UiAction::LockTap(entity_id) => {
+                let current = state.ha_client.get_state(&entity_id).await.map(|s| s.state).unwrap_or_default();
+                let data = serde_json::json!({ "entity_id": entity_id });
+                let mut r = state.renderer.write().await;
+                if crate::ui::widgets::lock_card::is_unlocked(&current) {
+                    let _ = state.ha_client.call_service("lock", "lock", data).await;
+                } else if r.unlock_armed.as_deref() == Some(entity_id.as_str()) {
+                    r.unlock_armed = None;
+                    let _ = state.ha_client.call_service("lock", "unlock", data).await;
+                } else {
+                    r.unlock_armed = Some(entity_id);
+                }
+            }
             UiAction::SwitchPage(idx) => {
                 let mut p = state.active_page.write().await;
                 *p = idx;

@@ -61,6 +61,17 @@ fn cloud_path(pb: &mut PathBuilder) {
     pb.close();
 }
 
+/// Loudspeaker body shared by the volume icons
+fn speaker_path(pb: &mut PathBuilder) {
+    pb.move_to(3.0, 9.5);
+    pb.line_to(7.0, 9.5);
+    pb.line_to(12.0, 5.0);
+    pb.line_to(12.0, 19.0);
+    pb.line_to(7.0, 14.5);
+    pb.line_to(3.0, 14.5);
+    pb.close();
+}
+
 fn icon_shapes(name: &str) -> Vec<(Mode, Option<Path>)> {
     use Mode::*;
     match name {
@@ -382,6 +393,73 @@ fn icon_shapes(name: &str) -> Vec<(Mode, Option<Path>)> {
                 pb.push_circle(18.0, 16.0, 3.0);
             })),
         ],
+        "chevron_up" => vec![(Stroke, build(|pb| {
+            pb.move_to(5.0, 15.0);
+            pb.line_to(12.0, 8.0);
+            pb.line_to(19.0, 15.0);
+        }))],
+        "chevron_down" => vec![(Stroke, build(|pb| {
+            pb.move_to(5.0, 9.0);
+            pb.line_to(12.0, 16.0);
+            pb.line_to(19.0, 9.0);
+        }))],
+        "chevron_left" => vec![(Stroke, build(|pb| {
+            pb.move_to(15.0, 5.0);
+            pb.line_to(8.0, 12.0);
+            pb.line_to(15.0, 19.0);
+        }))],
+        "chevron_right" => vec![(Stroke, build(|pb| {
+            pb.move_to(9.0, 5.0);
+            pb.line_to(16.0, 12.0);
+            pb.line_to(9.0, 19.0);
+        }))],
+        "back" => vec![(Stroke, build(|pb| {
+            pb.move_to(20.0, 12.0);
+            pb.line_to(4.0, 12.0);
+            pb.move_to(10.0, 6.0);
+            pb.line_to(4.0, 12.0);
+            pb.line_to(10.0, 18.0);
+        }))],
+        "volume_up" => vec![
+            (Fill, build(speaker_path)),
+            (Stroke, build(|pb| {
+                pb.move_to(15.5, 12.0);
+                pb.line_to(21.5, 12.0);
+                pb.move_to(18.5, 9.0);
+                pb.line_to(18.5, 15.0);
+            })),
+        ],
+        "volume_down" => vec![
+            (Fill, build(speaker_path)),
+            (Stroke, build(|pb| {
+                pb.move_to(15.5, 12.0);
+                pb.line_to(21.5, 12.0);
+            })),
+        ],
+        "volume_mute" => vec![
+            (Fill, build(speaker_path)),
+            (Stroke, build(|pb| {
+                pb.move_to(16.0, 9.5);
+                pb.line_to(21.0, 14.5);
+                pb.move_to(21.0, 9.5);
+                pb.line_to(16.0, 14.5);
+            })),
+        ],
+        "play_pause" => vec![(Fill, build(|pb| {
+            pb.move_to(3.0, 5.0);
+            pb.line_to(12.0, 12.0);
+            pb.line_to(3.0, 19.0);
+            pb.close();
+            round_rect(pb, 14.0, 5.0, 3.0, 14.0, 1.0);
+            round_rect(pb, 19.0, 5.0, 3.0, 14.0, 1.0);
+        }))],
+        "unlock" => vec![(Stroke, build(|pb| {
+            round_rect(pb, 4.0, 11.0, 16.0, 11.0, 2.0);
+            pb.move_to(7.5, 11.0);
+            pb.line_to(7.5, 7.0);
+            pb.cubic_to(7.5, 4.5, 9.5, 2.5, 12.0, 2.5);
+            pb.cubic_to(14.2, 2.5, 16.0, 4.0, 16.4, 6.0);
+        }))],
         "tv" => vec![(Stroke, build(|pb| {
             round_rect(pb, 2.0, 6.0, 20.0, 14.0, 2.0);
             pb.move_to(7.0, 2.0);

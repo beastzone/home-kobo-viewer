@@ -1,12 +1,12 @@
 [package]
 name = "kobo-ha-dashboard"
-version = "0.3.18"
+version = "0.4.0"
 edition = "2021"
 description = "Home Assistant dashboard for Kobo e-readers, with a desktop setup tool"
 authors = ["armamut"]
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/armamut/kobo-ha-dashboard"
+repository = "https://github.com/beastzone/home-kobo-viewer"
 keywords = ["kobo", "home-assistant", "e-ink", "dashboard"]
 
 [dependencies]

@@ -388,6 +388,19 @@ pub enum CardConfig {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         title: Option<String>,
     },
+    #[serde(rename = "lock")]
+    Lock {
+        entity_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        title: Option<String>,
+    },
+    /// TV remote (a `remote.*` entity, e.g. from Android TV Remote)
+    #[serde(rename = "remote")]
+    Remote {
+        entity_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        title: Option<String>,
+    },
     #[serde(rename = "scene")]
     Scene {
         entity_id: String,

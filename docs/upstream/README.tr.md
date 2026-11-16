@@ -7,7 +7,7 @@ Kobo e-okuyucular için dokunmatik bir [Home Assistant](https://www.home-assista
 [English README](README.md)
 
 <p align="center">
-  <img src="docs/images/dashboard-portrait.png" width="380" alt="Kobo Clara Colour üzerinde panel">
+  <img src="../images/dashboard-portrait.png" width="380" alt="Kobo Clara Colour üzerinde panel">
 </p>
 
 ## Özellikler

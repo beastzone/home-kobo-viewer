@@ -75,3 +75,17 @@ sleep:
   wake_hint: "Pressione o botão liga/desliga para despertar o painel"
   battery_empty: "Bateria esgotada"
   charge_hint: "Ligue o Kobo à energia para continuar"
+
+lock:
+  default_title: "Fechadura"
+  locked: "Trancada"
+  unlocked: "Destrancada"
+  locking: "A trancar…"
+  unlocking: "A destrancar…"
+  jammed: "Encravada"
+  confirm: "Toque de novo para destrancar"
+  action_lock: "Trancar"
+  action_unlock: "Destrancar"
+
+remote:
+  default_title: "Comando"

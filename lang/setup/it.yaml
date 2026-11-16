@@ -191,6 +191,8 @@ card_types:
   sensor: "Sensore"
   sensor_grid: "Griglia sensori"
   media_player: "Lettore multimediale"
+  lock: "Serratura"
+  remote: "Telecomando TV"
   scenes_row: "Pulsanti scena"
   scene: "Pulsante singolo"
 

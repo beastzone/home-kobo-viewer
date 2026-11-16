@@ -191,6 +191,8 @@ card_types:
   sensor: "センサー"
   sensor_grid: "センサーグリッド"
   media_player: "メディアプレーヤー"
+  lock: "ドアロック"
+  remote: "テレビリモコン"
   scenes_row: "シーンボタン"
   scene: "単独ボタン"
 

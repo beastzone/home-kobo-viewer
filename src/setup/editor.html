@@ -512,6 +512,8 @@ const CARD_TYPES = {
   sensor_grid: { icon: "layers", defaults: { sensors: [] },
     fields: [["title", "text", "design.title_optional"], ["sensors", "list", "design.sensors", { max: 8, domains: SENSOR_DOMAINS, item: "sensor" }], ["large_value", "bool", "design.large_value"]] },
   media_player: { icon: "music", domains: ["media_player"], fields: [["entity_id"], ["title"]] },
+  lock: { icon: "lock", domains: ["lock"], fields: [["entity_id"], ["title"]] },
+  remote: { icon: "tv", domains: ["remote"], fields: [["entity_id"], ["title"]] },
   scenes_row: { icon: "play", defaults: { scenes: [] },
     fields: [["title", "text", "design.title_optional"], ["scenes", "list", "design.buttons", { max: 6, domains: ACTION_DOMAINS, item: "scene" }]] },
   scene: { icon: "play", domains: ACTION_DOMAINS, defaults: { title: "" },

@@ -287,6 +287,8 @@ fn card_for(e: &EntityInfo) -> Option<CardConfig> {
         },
         "climate" => CardConfig::Climate { entity_id: e.entity_id.clone(), title, step: 0.5 },
         "media_player" => CardConfig::MediaPlayer { entity_id: e.entity_id.clone(), title },
+        "lock" => CardConfig::Lock { entity_id: e.entity_id.clone(), title },
+        "remote" => CardConfig::Remote { entity_id: e.entity_id.clone(), title },
         _ => return None,
     })
 }
@@ -358,7 +360,7 @@ pub fn generate(entities: &[EntityInfo], screen: (u32, u32)) -> Vec<PageConfig> 
     // Per area, biggest areas first; entities without an area go to "Other".
     let mut areas: BTreeMap<String, Vec<&EntityInfo>> = BTreeMap::new();
     for e in &usable {
-        if matches!(e.domain.as_str(), "light" | "switch" | "fan" | "input_boolean" | "climate" | "media_player" | "sensor") {
+        if matches!(e.domain.as_str(), "light" | "switch" | "fan" | "input_boolean" | "climate" | "media_player" | "lock" | "remote" | "sensor") {
             let area = e.area.clone().unwrap_or_else(|| i18n::t("generated.other"));
             areas.entry(area).or_default().push(e);
         }
@@ -371,8 +373,10 @@ pub fn generate(entities: &[EntityInfo], screen: (u32, u32)) -> Vec<PageConfig> 
                 "climate" => 0,
                 "light" => 1,
                 "switch" | "fan" | "input_boolean" => 2,
+                "lock" => 2,
                 "media_player" => 3,
-                _ => 4,
+                "remote" => 4,
+                _ => 5,
             };
             let mut ents = ents;
             ents.sort_by_key(|e| order(&e.domain));

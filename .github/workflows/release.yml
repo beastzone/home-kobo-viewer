@@ -38,9 +38,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-latest, target: aarch64-apple-darwin, name: macos-apple-silicon, exe: "" }
-          # Built on Apple silicon for the Intel target (macOS Intel runners are retired)
-          - { os: macos-latest, target: x86_64-apple-darwin, name: macos-intel, exe: "" }
           - { os: ubuntu-latest, target: x86_64-unknown-linux-gnu, name: linux-x64, exe: "" }
           - { os: windows-latest, target: x86_64-pc-windows-msvc, name: windows-x64, exe: ".exe" }
     runs-on: ${{ matrix.os }}
@@ -61,7 +58,7 @@ jobs:
           mkdir -p "$PKG/kobo"
           cp "target/${{ matrix.target }}/release/kobo-ha-dashboard${{ matrix.exe }}" "$PKG/"
           cp kobo-binary/kobo-ha-dashboard "$PKG/kobo/kobo-ha-dashboard"
-          cp README.md LICENSE config.example.yaml "$PKG/"
+          cp README.md LICENSE LICENSE.kobo-ha-dashboard config.example.yaml "$PKG/"
           if [ "${{ runner.os }}" = "Windows" ]; then
             7z a "$PKG.zip" "$PKG" > /dev/null
           else

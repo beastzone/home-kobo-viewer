@@ -111,6 +111,8 @@ impl HaClient {
                 | CardConfig::Climate { entity_id, .. }
                 | CardConfig::Sensor { entity_id, .. }
                 | CardConfig::MediaPlayer { entity_id, .. }
+                | CardConfig::Lock { entity_id, .. }
+                | CardConfig::Remote { entity_id, .. }
                 | CardConfig::Scene { entity_id, .. } => all.push(entity_id.clone()),
                 CardConfig::SensorGrid { sensors, .. } => all.extend(sensors.iter().map(|s| s.entity_id.clone())),
                 CardConfig::ScenesRow { scenes, .. } => all.extend(scenes.iter().map(|s| s.entity_id.clone())),
@@ -459,6 +461,12 @@ impl HaClient {
                     if let Some(target) = data.get("temperature").and_then(|v| v.as_f64()) {
                         state.attributes.insert("temperature".to_string(), serde_json::json!(target));
                     }
+                }
+                "lock" => {
+                    state.state = "locked".to_string();
+                }
+                "unlock" => {
+                    state.state = "unlocked".to_string();
                 }
                 "media_play_pause" => {
                     state.state = if state.state == "playing" { "paused" } else { "playing" }.to_string();

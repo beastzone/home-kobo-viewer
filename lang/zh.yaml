@@ -75,3 +75,17 @@ sleep:
   wake_hint: "按电源键唤醒仪表板"
   battery_empty: "电池电量已耗尽"
   charge_hint: "请为 Kobo 充电以继续使用"
+
+lock:
+  default_title: "门锁"
+  locked: "已上锁"
+  unlocked: "已解锁"
+  locking: "正在上锁…"
+  unlocking: "正在解锁…"
+  jammed: "卡住"
+  confirm: "再次点按以解锁"
+  action_lock: "上锁"
+  action_unlock: "解锁"
+
+remote:
+  default_title: "遥控器"

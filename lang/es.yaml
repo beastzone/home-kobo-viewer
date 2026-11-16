@@ -75,3 +75,17 @@ sleep:
   wake_hint: "Pulsa el botón de encendido para activar el panel"
   battery_empty: "Batería agotada"
   charge_hint: "Conecta el Kobo para continuar"
+
+lock:
+  default_title: "Cerradura"
+  locked: "Cerrada"
+  unlocked: "Abierta"
+  locking: "Cerrando…"
+  unlocking: "Abriendo…"
+  jammed: "Atascada"
+  confirm: "Toca otra vez para abrir"
+  action_lock: "Cerrar"
+  action_unlock: "Abrir"
+
+remote:
+  default_title: "Mando"

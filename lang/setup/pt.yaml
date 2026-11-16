@@ -191,6 +191,8 @@ card_types:
   sensor: "Sensor"
   sensor_grid: "Grade de sensores"
   media_player: "Reprodutor de mídia"
+  lock: "Fechadura"
+  remote: "Comando de TV"
   scenes_row: "Botões de cena"
   scene: "Botão único"
 

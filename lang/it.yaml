@@ -75,3 +75,17 @@ sleep:
   wake_hint: "Premi il tasto di accensione per riattivare la dashboard"
   battery_empty: "Batteria scarica"
   charge_hint: "Collega il Kobo per continuare"
+
+lock:
+  default_title: "Serratura"
+  locked: "Chiusa"
+  unlocked: "Aperta"
+  locking: "Chiusura…"
+  unlocking: "Apertura…"
+  jammed: "Bloccata"
+  confirm: "Tocca di nuovo per aprire"
+  action_lock: "Chiudi"
+  action_unlock: "Apri"
+
+remote:
+  default_title: "Telecomando"

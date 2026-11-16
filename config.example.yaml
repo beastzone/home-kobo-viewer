@@ -151,6 +151,17 @@ pages:
         entity_id: "media_player.living_room"
         title: "Speaker"
 
+      # Door lock: one tap locks; unlocking asks for a second tap within 6 seconds
+      - type: "lock"
+        entity_id: "lock.front_door"
+        title: "Front door"
+
+      # TV remote (a remote.* entity, e.g. from the Android TV Remote integration):
+      # arrows and OK, power, home, back, volume, mute and playback keys
+      - type: "remote"
+        entity_id: "remote.living_room_tv"
+        title: "Living room TV"
+
   - id: "energy"
     title: "Energy"
     icon: "zap"

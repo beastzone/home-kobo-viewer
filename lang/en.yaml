@@ -51,6 +51,20 @@ climate:
 media:
   default_title: "Media"
 
+lock:
+  default_title: "Lock"
+  locked: "Locked"
+  unlocked: "Unlocked"
+  locking: "Locking…"
+  unlocking: "Unlocking…"
+  jammed: "Jammed"
+  confirm: "Tap again to unlock"
+  action_lock: "Lock"
+  action_unlock: "Unlock"
+
+remote:
+  default_title: "Remote"
+
 weather:
   no_forecast: "No forecast data"
   wind_kmh: "km/h"

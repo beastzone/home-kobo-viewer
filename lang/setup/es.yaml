@@ -191,6 +191,8 @@ card_types:
   sensor: "Sensor"
   sensor_grid: "Cuadrícula de sensores"
   media_player: "Reproductor multimedia"
+  lock: "Cerradura"
+  remote: "Mando de TV"
   scenes_row: "Botones de escena"
   scene: "Botón único"
 

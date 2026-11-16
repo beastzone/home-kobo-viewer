@@ -75,3 +75,17 @@ sleep:
   wake_hint: "Appuyez sur le bouton d'alimentation pour réveiller le tableau de bord"
   battery_empty: "Batterie vide"
   charge_hint: "Branchez la Kobo pour continuer"
+
+lock:
+  default_title: "Serrure"
+  locked: "Verrouillée"
+  unlocked: "Déverrouillée"
+  locking: "Verrouillage…"
+  unlocking: "Déverrouillage…"
+  jammed: "Bloquée"
+  confirm: "Touchez à nouveau pour déverrouiller"
+  action_lock: "Verrouiller"
+  action_unlock: "Déverrouiller"
+
+remote:
+  default_title: "Télécommande"

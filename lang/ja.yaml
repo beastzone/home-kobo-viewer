@@ -75,3 +75,17 @@ sleep:
   wake_hint: "電源ボタンを押すとダッシュボードが復帰します"
   battery_empty: "バッテリー切れ"
   charge_hint: "続けるには Kobo を充電してください"
+
+lock:
+  default_title: "ロック"
+  locked: "施錠中"
+  unlocked: "解錠中"
+  locking: "施錠しています…"
+  unlocking: "解錠しています…"
+  jammed: "動作不良"
+  confirm: "もう一度タップで解錠"
+  action_lock: "施錠"
+  action_unlock: "解錠"
+
+remote:
+  default_title: "リモコン"

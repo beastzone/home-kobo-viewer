@@ -6,6 +6,7 @@ use crate::ui::layout::{InteractiveTarget, Rect, UiAction};
 use crate::ui::theme::Theme;
 use crate::ui::widgets::climate_card::CLIMATE_WIDE;
 use crate::ui::widgets::header::{read_device_status, HeaderStatus, SIDE_PAD};
+use crate::ui::widgets::remote_card::{REMOTE_MIN_H, REMOTE_NATURAL_H};
 use crate::ui::widgets::scene_card::SCENES_TITLE_H;
 use crate::ui::widgets::sensor_card::{sensor_grid_columns, sensor_grid_height, TILE_GAP};
 use crate::ui::widgets::*;
@@ -33,7 +34,8 @@ fn span_of(card: &CardConfig) -> Span {
         CardConfig::Weather { .. }
         | CardConfig::ScenesRow { .. }
         | CardConfig::SensorGrid { .. }
-        | CardConfig::MediaPlayer { .. } => Span::Full,
+        | CardConfig::MediaPlayer { .. }
+        | CardConfig::Remote { .. } => Span::Full,
         _ => Span::Half,
     }
 }
@@ -80,6 +82,8 @@ fn heights(card: &CardConfig, w: f32) -> (f32, f32) {
             (nat, nat - rows as f32 * 10.0)
         }
         CardConfig::MediaPlayer { .. } => (180.0, 140.0),
+        CardConfig::Lock { .. } => (150.0, 118.0),
+        CardConfig::Remote { .. } => (REMOTE_NATURAL_H, REMOTE_MIN_H),
         CardConfig::Scene { .. } => (112.0, 86.0),
     }
 }
@@ -199,6 +203,8 @@ pub struct ScreenRenderer {
     pub sleep_until: Option<String>,
     /// Draw the "battery empty" screen instead of the dashboard
     pub battery_empty: bool,
+    /// Lock waiting for its second, confirming tap before it unlocks
+    pub unlock_armed: Option<String>,
     /// Pixels per UI unit on the last rendered canvas
     scale: f32,
 }
@@ -213,6 +219,7 @@ impl ScreenRenderer {
             frontlight: None,
             sleep_until: None,
             battery_empty: false,
+            unlock_armed: None,
             scale: 1.0,
         }
     }
@@ -379,6 +386,13 @@ impl ScreenRenderer {
                 *large_value,
                 targets,
             ),
+            CardConfig::Lock { entity_id, title } => {
+                let armed = self.unlock_armed.as_deref() == Some(entity_id.as_str());
+                render_lock_card(canvas, theme, rect, entity_id, states.get(entity_id), title.as_deref(), armed, targets)
+            }
+            CardConfig::Remote { entity_id, title } => {
+                render_remote_card(canvas, theme, rect, entity_id, states.get(entity_id), title.as_deref(), targets)
+            }
             CardConfig::Scene { entity_id, title, icon } => {
                 let item = [SceneItemConfig {
                     entity_id: entity_id.clone(),
@@ -502,6 +516,81 @@ mod tests {
         // Larger screens stay at one pixel per unit
         assert_eq!(ui_size(758, 1024), (758.0, 1024.0));
         assert_eq!(ui_size(1072, 1448), (1072.0, 1448.0));
+    }
+
+    /// A page holding the lock and the TV remote, as on a Kobo Aura.
+    fn lock_and_remote_page() -> AppConfig {
+        let mut config = AppConfig::default();
+        config.theme.mode = "high_contrast_bw".to_string();
+        config.pages = vec![crate::config::PageConfig {
+            id: "home".to_string(),
+            title: "Home".to_string(),
+            icon: "home".to_string(),
+            cards: vec![
+                CardConfig::Lock { entity_id: "lock.front_door".to_string(), title: None },
+                CardConfig::Switch { entity_id: "switch.heater".to_string(), title: Some("Heater".to_string()), subtitle: None, icon: None },
+                CardConfig::Remote { entity_id: "remote.living_room_tv".to_string(), title: None },
+            ],
+        }];
+        config
+    }
+
+    #[test]
+    fn lock_and_remote_cards_fit_the_aura_both_ways_up() {
+        let _guard = crate::i18n::TEST_LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        crate::i18n::set_language("en");
+        let config = lock_and_remote_page();
+        let states = crate::ha::mock::generate_mock_states();
+        for (w, h, landscape) in [(758, 1024, false), (1024, 758, true)] {
+            let mut canvas = Canvas::for_screen(w, h);
+            let mut renderer = ScreenRenderer::new(&config);
+            renderer.render(&mut canvas, &config, 0, &states, landscape);
+            assert_eq!(renderer.hidden_cards, 0, "{}x{}", w, h);
+            let keys: Vec<&Rect> = renderer
+                .targets
+                .iter()
+                .filter(|t| matches!(&t.action, UiAction::Service { domain, .. } if domain == "remote"))
+                .map(|t| &t.rect)
+                .collect();
+            assert_eq!(keys.len(), 14, "five D-pad keys and nine others");
+            // No key overlaps another, so a tap can only mean one of them
+            for (i, a) in keys.iter().enumerate() {
+                for b in &keys[i + 1..] {
+                    let apart = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
+                    assert!(apart, "{:?} overlaps {:?} at {}x{}", a, b, w, h);
+                }
+            }
+            let (uw, uh) = canvas.ui_size();
+            for t in &renderer.targets {
+                assert!(t.rect.x >= -0.5 && t.rect.y >= -0.5 && t.rect.x + t.rect.w <= uw + 0.5 && t.rect.y + t.rect.h <= uh + 0.5, "{:?}", t.rect);
+            }
+            assert!(renderer.targets.iter().any(|t| matches!(&t.action, UiAction::LockTap(id) if id == "lock.front_door")));
+            if let Ok(dir) = std::env::var("KOBO_PREVIEW_DIR") {
+                renderer.unlock_armed = Some("lock.front_door".to_string());
+                renderer.render(&mut canvas, &config, 0, &states, landscape);
+                std::fs::write(format!("{}/aura-{}x{}.png", dir, w, h), canvas.to_grayscale_png_bytes().unwrap()).unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn an_offline_lock_cannot_be_tapped() {
+        let _guard = crate::i18n::TEST_LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let config = lock_and_remote_page();
+        let mut canvas = Canvas::for_screen(758, 1024);
+        let mut renderer = ScreenRenderer::new(&config);
+        // No states at all: the lock and the remote are unavailable
+        renderer.render(&mut canvas, &config, 0, &HashMap::new(), false);
+        assert!(!renderer.targets.iter().any(|t| matches!(t.action, UiAction::LockTap(_) | UiAction::Service { .. })));
+    }
+
+    #[test]
+    fn lock_and_remote_cards_round_trip_through_yaml() {
+        let yaml = "- type: lock\n  entity_id: lock.front_door\n- type: remote\n  entity_id: remote.tv\n  title: TV\n";
+        let cards: Vec<CardConfig> = serde_yaml::from_str(yaml).unwrap();
+        assert!(matches!(&cards[0], CardConfig::Lock { entity_id, title: None } if entity_id == "lock.front_door"));
+        assert!(matches!(&cards[1], CardConfig::Remote { title: Some(t), .. } if t == "TV"));
+        assert_eq!(serde_yaml::to_string(&cards).unwrap(), yaml);
     }
 
     #[test]
