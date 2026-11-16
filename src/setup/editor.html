@@ -104,6 +104,25 @@ input[type=color] { width: 48px; height: 38px; padding: 2px; border: 1px solid v
 .tag.err { color: var(--err); border-color: var(--err); }
 .tag.warn { color: var(--warn); border-color: var(--warn); }
 .cardform { grid-column: 1 / -1; border-top: 1px solid var(--border); margin-top: 6px; padding-top: 12px; }
+.plan { grid-column: 1 / -1; display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 14px; }
+@media (max-width: 760px) { .plan { grid-template-columns: 1fr; } }
+.plan-side { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.plan-palette { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; padding-right: 2px; }
+.plan-chip { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); font-size: 13px; cursor: grab; user-select: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.plan-chip:first-child { border-style: dashed; font-weight: 600; }
+.plan-chip img { width: 18px; height: 18px; flex: none; }
+.plan-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.plan-stage { position: relative; width: 100%; border: 1px solid var(--border-strong); border-radius: 6px; background-color: var(--surface-2); background-image: linear-gradient(to right, var(--border) 1px, transparent 1px), linear-gradient(to bottom, var(--border) 1px, transparent 1px); touch-action: none; overflow: hidden; }
+.plan-room { position: absolute; border: 2px solid var(--text); background: color-mix(in srgb, var(--surface) 82%, transparent); cursor: move; user-select: none; }
+.plan-room.sel { border-color: var(--accent); z-index: 1; }
+.plan-name { position: absolute; left: 6px; top: 3px; right: 6px; font-size: 12px; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; }
+.plan-grip { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 50%, var(--text) 50%); }
+.plan-room.sel .plan-grip { background: linear-gradient(135deg, transparent 50%, var(--accent) 50%); }
+.plan-dev { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--text); background: #fff; cursor: move; z-index: 2; user-select: none; }
+.plan-dev.sel { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+.plan-dev img { width: 18px; height: 18px; pointer-events: none; }
+.plan-props { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; min-height: 58px; }
+.plan-props .hint { font-size: 13px; color: var(--muted); align-self: center; margin: 0; }
 .sublist { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px; }
 .subitem { display: grid; grid-template-columns: 2fr 1.4fr 1fr .7fr auto; gap: 8px; align-items: end; padding: 10px; border: 1px dashed var(--border-strong); border-radius: 8px; }
 @media (max-width: 760px) { .subitem { grid-template-columns: 1fr 1fr; } }
@@ -514,6 +533,8 @@ const CARD_TYPES = {
   media_player: { icon: "music", domains: ["media_player"], fields: [["entity_id"], ["title"]] },
   lock: { icon: "lock", domains: ["lock"], fields: [["entity_id"], ["title"]] },
   remote: { icon: "tv", domains: ["remote"], fields: [["entity_id"], ["title"]] },
+  floorplan: { icon: "home", defaults: { cols: 24, rows: 16, rooms: [], devices: [] },
+    fields: [["title", "text", "design.title_optional"], ["plan", "floorplan"]] },
   scenes_row: { icon: "play", defaults: { scenes: [] },
     fields: [["title", "text", "design.title_optional"], ["scenes", "list", "design.buttons", { max: 6, domains: ACTION_DOMAINS, item: "scene" }]] },
   scene: { icon: "play", domains: ACTION_DOMAINS, defaults: { title: "" },
@@ -987,6 +1008,7 @@ function cardSummary(c) {
   let sub = c.entity_id || "";
   if (c.type === "sensor_grid") sub = T("design.sensors_count", { n: (c.sensors || []).length });
   if (c.type === "scenes_row") sub = T("design.buttons_count", { n: (c.scenes || []).length });
+  if (c.type === "floorplan") sub = (c.rooms || []).map((r) => r.name).filter(Boolean).join(", ");
   const tags = [el("span", { class: "tag" }, typeLabel(c.type))];
   if (entities.length && c.entity_id && !e) tags.push(el("span", { class: "tag err", title: T("design.not_found_title") }, T("design.not_found")));
   return { t, title, sub, tags };
@@ -1083,6 +1105,8 @@ function cardForm(c) {
       form.append(el("label", { class: "field" }, T(label), n));
     } else if (kind === "list") {
       form.append(listEditor(c, key, T(label), opts));
+    } else if (kind === "floorplan") {
+      form.append(planEditor(c));
     } else {
       const placeholder = key === "title" && c.type !== "scene" ? T("design.title_auto") : "";
       const t = el("input", { type: "text", value: c[key] || "", placeholder });
@@ -1122,6 +1146,152 @@ function listEditor(c, key, label, opts) {
     } }, T("design.add"))));
   }
   return wrap;
+}
+
+// ---------- Floorplan editor ----------
+// Rooms and devices live on a cols x rows grid of squares. Rooms snap to whole
+// squares so that neighbours share a wall; devices snap to half squares.
+const PLAN_DOMAINS = ["light", "switch", "fan", "input_boolean", "lock", "media_player", "remote", "climate", "cover", "scene", "script", "sensor", "binary_sensor"];
+const PLAN_ICONS = { light: "lightbulb", switch: "plug", input_boolean: "plug", fan: "fan", lock: "lock", media_player: "tv", remote: "tv", climate: "thermometer", cover: "door", scene: "play", script: "play", sensor: "thermometer", binary_sensor: "door" };
+const planIcon = (d) => d.icon || PLAN_ICONS[d.entity_id.split(".")[0]] || "power";
+const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+
+function planEditor(c) {
+  c.rooms = c.rooms || []; c.devices = c.devices || [];
+  c.cols = c.cols || 24; c.rows = c.rows || 16;
+  let selected = null; // the room or device object last touched
+  const stage = el("div", { class: "plan-stage" });
+  const props = el("div", { class: "plan-props" });
+  const palette = el("div", { class: "plan-palette" });
+  const search = el("input", { type: "text", placeholder: T("design.plan_search"), spellcheck: "false" });
+
+  // Pointer position as grid squares
+  const at = (ev) => {
+    const b = stage.getBoundingClientRect();
+    return { gx: ((ev.clientX - b.left) / b.width) * c.cols, gy: ((ev.clientY - b.top) / b.height) * c.rows };
+  };
+  const place = (node, x, y, w, h) => {
+    node.style.left = (x / c.cols) * 100 + "%"; node.style.top = (y / c.rows) * 100 + "%";
+    if (w != null) { node.style.width = (w / c.cols) * 100 + "%"; node.style.height = (h / c.rows) * 100 + "%"; }
+  };
+  // Drag `node` with the pointer; `move` gets the pointer in squares and the
+  // offset it was picked up at. Saved once, when the drag ends.
+  const drag = (node, target, start, move) => node.addEventListener("pointerdown", (ev) => {
+    if (ev.button !== 0 || ev.target.closest("input,button")) return;
+    ev.preventDefault(); ev.stopPropagation();
+    const p0 = at(ev), s0 = start();
+    selected = target; node.setPointerCapture(ev.pointerId); markSelected();
+    const onMove = (e) => { const p = at(e); move(p.gx - p0.gx, p.gy - p0.gy, s0); };
+    const onUp = () => { node.removeEventListener("pointermove", onMove); node.removeEventListener("pointerup", onUp); drawProps(); sync(); };
+    node.addEventListener("pointermove", onMove); node.addEventListener("pointerup", onUp);
+  });
+  const markSelected = () => stage.querySelectorAll(".plan-room,.plan-dev").forEach((n) => n.classList.toggle("sel", n._item === selected));
+
+  function draw() {
+    stage.style.aspectRatio = `${c.cols} / ${c.rows}`;
+    stage.style.backgroundSize = `${100 / c.cols}% ${100 / c.rows}%`;
+    stage.replaceChildren();
+    for (const r of c.rooms) {
+      const grip = el("span", { class: "plan-grip" });
+      const node = el("div", { class: "plan-room" }, el("span", { class: "plan-name" }, r.name), grip);
+      node._item = r; place(node, r.x, r.y, r.w, r.h);
+      drag(node, r, () => ({ x: r.x, y: r.y }), (dx, dy, s) => {
+        r.x = clamp(Math.round(s.x + dx), 0, c.cols - r.w); r.y = clamp(Math.round(s.y + dy), 0, c.rows - r.h);
+        place(node, r.x, r.y);
+      });
+      drag(grip, r, () => ({ w: r.w, h: r.h }), (dx, dy, s) => {
+        r.w = clamp(Math.round(s.w + dx), 2, c.cols - r.x); r.h = clamp(Math.round(s.h + dy), 2, c.rows - r.y);
+        place(node, r.x, r.y, r.w, r.h);
+      });
+      stage.append(node);
+    }
+    for (const d of c.devices) {
+      const e = entityById(d.entity_id);
+      const node = el("div", { class: "plan-dev", title: e ? e.name : d.entity_id }, el("img", { src: iconUrl(planIcon(d)), alt: "" }));
+      node._item = d; place(node, d.x, d.y);
+      drag(node, d, () => ({ x: d.x, y: d.y }), (dx, dy, s) => {
+        d.x = clamp(Math.round((s.x + dx) * 2) / 2, 0.5, c.cols - 0.5); d.y = clamp(Math.round((s.y + dy) * 2) / 2, 0.5, c.rows - 0.5);
+        place(node, d.x, d.y);
+      });
+      stage.append(node);
+    }
+    markSelected(); drawProps(); drawPalette();
+  }
+
+  function drawProps() {
+    props.replaceChildren();
+    const remove = (list) => el("button", { class: "btn small danger", onclick: () => { list.splice(list.indexOf(selected), 1); selected = null; draw(); sync(); } }, T("design.remove"));
+    if (c.rooms.includes(selected)) {
+      const name = el("input", { type: "text", value: selected.name });
+      name.oninput = () => { selected.name = name.value; stage.querySelectorAll(".plan-room").forEach((n) => { if (n._item === selected) n.querySelector(".plan-name").textContent = name.value; }); sync(); };
+      props.append(el("label", { class: "field" }, T("design.plan_room"), name), remove(c.rooms));
+    } else if (c.devices.includes(selected)) {
+      const dev = selected, e = entityById(dev.entity_id);
+      props.append(
+        el("div", { class: "field" }, e ? e.name : dev.entity_id, el("div", { class: "entity-meta" }, dev.entity_id)),
+        el("label", { class: "field" }, T("design.icon"), iconSelect(dev.icon, (v) => { if (v) dev.icon = v; else delete dev.icon; draw(); sync(); })),
+        remove(c.devices));
+    } else {
+      props.append(el("div", { class: "hint" }, T("design.plan_hint")));
+    }
+  }
+
+  function drawPalette() {
+    const q = search.value.trim().toLowerCase();
+    const placed = new Set(c.devices.map((d) => d.entity_id));
+    const found = entities
+      .filter((e) => PLAN_DOMAINS.includes(e.domain) && !e.hidden && !placed.has(e.entity_id))
+      .filter((e) => !q || `${e.name} ${e.area || ""} ${e.entity_id}`.toLowerCase().includes(q))
+      .slice(0, 40);
+    const chip = (kind, id, icon, label, title) => {
+      const n = el("div", { class: "plan-chip", draggable: "true", title: title || label }, el("img", { src: iconUrl(icon), alt: "" }), label);
+      n.addEventListener("dragstart", (ev) => { ev.dataTransfer.setData("text/plain", kind + ":" + id); ev.dataTransfer.effectAllowed = "copy"; });
+      // A click adds it too, for touch screens and anyone who prefers not to drag
+      n.addEventListener("click", () => addItem(kind, id, c.cols / 2, c.rows / 2));
+      return n;
+    };
+    palette.replaceChildren(chip("room", "", "home", "+ " + T("design.plan_room")),
+      ...found.map((e) => chip("dev", e.entity_id, PLAN_ICONS[e.domain] || "power", shortName(e), `${e.name}${e.area ? " · " + e.area : ""} — ${e.entity_id}`)));
+  }
+
+  function addItem(kind, id, gx, gy) {
+    if (kind === "room") {
+      const w = Math.min(6, c.cols), h = Math.min(5, c.rows);
+      selected = { name: T("design.plan_room"), x: clamp(Math.round(gx - w / 2), 0, c.cols - w), y: clamp(Math.round(gy - h / 2), 0, c.rows - h), w, h };
+      c.rooms.push(selected);
+    } else if (id && !c.devices.some((d) => d.entity_id === id)) {
+      selected = { entity_id: id, x: clamp(Math.round(gx * 2) / 2, 0.5, c.cols - 0.5), y: clamp(Math.round(gy * 2) / 2, 0.5, c.rows - 0.5) };
+      c.devices.push(selected);
+    }
+    draw(); sync();
+  }
+
+  stage.addEventListener("dragover", (ev) => { ev.preventDefault(); ev.dataTransfer.dropEffect = "copy"; });
+  stage.addEventListener("drop", (ev) => {
+    ev.preventDefault();
+    const [kind, ...rest] = (ev.dataTransfer.getData("text/plain") || "").split(":");
+    const p = at(ev);
+    if (kind === "room" || kind === "dev") addItem(kind, rest.join(":"), p.gx, p.gy);
+  });
+  stage.addEventListener("pointerdown", (ev) => { if (ev.target === stage) { selected = null; markSelected(); drawProps(); } });
+  search.oninput = drawPalette;
+
+  const size = (key, label, min, max) => {
+    const n = el("input", { type: "number", value: c[key], min, max });
+    n.onchange = () => {
+      c[key] = clamp(parseInt(n.value, 10) || c[key], min, max); n.value = c[key];
+      // Keep everything on the plan when it gets smaller
+      for (const r of c.rooms) { r.w = Math.min(r.w, c.cols); r.h = Math.min(r.h, c.rows); r.x = clamp(r.x, 0, c.cols - r.w); r.y = clamp(r.y, 0, c.rows - r.h); }
+      for (const d of c.devices) { d.x = clamp(d.x, 0.5, c.cols - 0.5); d.y = clamp(d.y, 0.5, c.rows - 0.5); }
+      draw(); sync();
+    };
+    return el("label", { class: "field" }, T(label), n);
+  };
+
+  draw();
+  return el("div", { class: "plan full" },
+    el("div", { class: "plan-side" }, search, palette),
+    el("div", { class: "plan-main" }, stage, props, el("div", { class: "grid2" }, size("cols", "design.plan_cols", 6, 48), size("rows", "design.plan_rows", 6, 48))));
 }
 
 let renderSoonTimer = null;

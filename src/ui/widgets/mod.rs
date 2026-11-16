@@ -1,4 +1,5 @@
 pub mod climate_card;
+pub mod floorplan_card;
 pub mod header;
 pub mod light_card;
 pub mod lock_card;
@@ -10,6 +11,7 @@ pub mod switch_card;
 pub mod weather_card;
 
 pub use climate_card::render_climate_card;
+pub use floorplan_card::render_floorplan_card;
 pub use header::render_header;
 pub use light_card::render_light_card;
 pub use lock_card::render_lock_card;

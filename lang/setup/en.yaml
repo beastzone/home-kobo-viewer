@@ -186,6 +186,11 @@ design:
   buttons: "Buttons"
   add: "+ Add"
   remove: "Remove"
+  plan_room: "Room"
+  plan_search: "Search devices…"
+  plan_hint: "Drag a room or a device onto the plan. Drag to move it; drag a room's corner to resize it."
+  plan_cols: "Plan width (squares)"
+  plan_rows: "Plan height (squares)"
 
 card_types:
   weather: "Weather"
@@ -197,6 +202,7 @@ card_types:
   media_player: "Media player"
   lock: "Door lock"
   remote: "TV remote"
+  floorplan: "Floorplan"
   scenes_row: "Scene buttons"
   scene: "Single button"
 

@@ -182,6 +182,11 @@ design:
   buttons: "Przyciski"
   add: "+ Dodaj"
   remove: "Usuń"
+  plan_room: "Pokój"
+  plan_search: "Szukaj urządzeń…"
+  plan_hint: "Przeciągnij pokój lub urządzenie na plan. Przeciągnij, aby przesunąć; przeciągnij róg pokoju, aby zmienić rozmiar."
+  plan_cols: "Szerokość planu (kratki)"
+  plan_rows: "Wysokość planu (kratki)"
 
 card_types:
   weather: "Pogoda"
@@ -193,6 +198,7 @@ card_types:
   media_player: "Odtwarzacz multimediów"
   lock: "Zamek do drzwi"
   remote: "Pilot TV"
+  floorplan: "Plan mieszkania"
   scenes_row: "Przyciski scen"
   scene: "Pojedynczy przycisk"
 

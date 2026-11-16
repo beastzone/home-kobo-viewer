@@ -182,6 +182,11 @@ design:
   buttons: "Pulsanti"
   add: "+ Aggiungi"
   remove: "Rimuovi"
+  plan_room: "Stanza"
+  plan_search: "Cerca dispositivi…"
+  plan_hint: "Trascina una stanza o un dispositivo sulla pianta. Trascina per spostare; trascina l'angolo di una stanza per ridimensionarla."
+  plan_cols: "Larghezza pianta (quadretti)"
+  plan_rows: "Altezza pianta (quadretti)"
 
 card_types:
   weather: "Meteo"
@@ -193,6 +198,7 @@ card_types:
   media_player: "Lettore multimediale"
   lock: "Serratura"
   remote: "Telecomando TV"
+  floorplan: "Planimetria"
   scenes_row: "Pulsanti scena"
   scene: "Pulsante singolo"
 

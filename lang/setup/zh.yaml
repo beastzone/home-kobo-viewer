@@ -182,6 +182,11 @@ design:
   buttons: "按钮"
   add: "+ 添加"
   remove: "移除"
+  plan_room: "房间"
+  plan_search: "搜索设备…"
+  plan_hint: "将房间或设备拖到平面图上。拖动可移动；拖动房间的角可调整大小。"
+  plan_cols: "平面图宽度（格）"
+  plan_rows: "平面图高度（格）"
 
 card_types:
   weather: "天气"
@@ -193,6 +198,7 @@ card_types:
   media_player: "媒体播放器"
   lock: "门锁"
   remote: "电视遥控器"
+  floorplan: "平面图"
   scenes_row: "场景按钮"
   scene: "单个按钮"
 

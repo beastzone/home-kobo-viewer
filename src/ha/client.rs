@@ -116,6 +116,7 @@ impl HaClient {
                 | CardConfig::Scene { entity_id, .. } => all.push(entity_id.clone()),
                 CardConfig::SensorGrid { sensors, .. } => all.extend(sensors.iter().map(|s| s.entity_id.clone())),
                 CardConfig::ScenesRow { scenes, .. } => all.extend(scenes.iter().map(|s| s.entity_id.clone())),
+                CardConfig::Floorplan { devices, .. } => all.extend(devices.iter().map(|d| d.entity_id.clone())),
             }
         }
         weather.dedup();
@@ -445,8 +446,14 @@ impl HaClient {
 
     async fn apply_mock_service_call(&self, _domain: &str, service: &str, data: &Value) {
         let mut states = self.states.write().await;
-        let entity_id = data.get("entity_id").and_then(|v| v.as_str()).unwrap_or("");
-        if let Some(state) = states.get_mut(entity_id) {
+        // One entity, or a list of them (a floorplan room switches several at once)
+        let ids: Vec<&str> = match data.get("entity_id") {
+            Some(Value::String(id)) => vec![id.as_str()],
+            Some(Value::Array(list)) => list.iter().filter_map(|v| v.as_str()).collect(),
+            _ => Vec::new(),
+        };
+        for entity_id in ids {
+            let Some(state) = states.get_mut(entity_id) else { continue };
             match service {
                 "toggle" => {
                     state.state = if state.is_on() { "off" } else { "on" }.to_string();

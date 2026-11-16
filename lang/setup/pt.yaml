@@ -182,6 +182,11 @@ design:
   buttons: "Botões"
   add: "+ Adicionar"
   remove: "Remover"
+  plan_room: "Divisão"
+  plan_search: "Procurar dispositivos…"
+  plan_hint: "Arraste uma divisão ou um dispositivo para a planta. Arraste para mover; arraste o canto de uma divisão para redimensionar."
+  plan_cols: "Largura da planta (quadrados)"
+  plan_rows: "Altura da planta (quadrados)"
 
 card_types:
   weather: "Clima"
@@ -193,6 +198,7 @@ card_types:
   media_player: "Reprodutor de mídia"
   lock: "Fechadura"
   remote: "Comando de TV"
+  floorplan: "Planta"
   scenes_row: "Botões de cena"
   scene: "Botão único"
 

@@ -182,6 +182,11 @@ design:
   buttons: "Boutons"
   add: "+ Ajouter"
   remove: "Retirer"
+  plan_room: "Pièce"
+  plan_search: "Rechercher des appareils…"
+  plan_hint: "Faites glisser une pièce ou un appareil sur le plan. Faites glisser pour déplacer ; faites glisser le coin d'une pièce pour la redimensionner."
+  plan_cols: "Largeur du plan (cases)"
+  plan_rows: "Hauteur du plan (cases)"
 
 card_types:
   weather: "Météo"
@@ -193,6 +198,7 @@ card_types:
   media_player: "Lecteur multimédia"
   lock: "Serrure"
   remote: "Télécommande TV"
+  floorplan: "Plan"
   scenes_row: "Boutons de scène"
   scene: "Bouton unique"
 

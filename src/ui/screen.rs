@@ -5,6 +5,7 @@ use crate::ha::models::EntityState;
 use crate::ui::layout::{InteractiveTarget, Rect, UiAction};
 use crate::ui::theme::Theme;
 use crate::ui::widgets::climate_card::CLIMATE_WIDE;
+use crate::ui::widgets::floorplan_card::floorplan_heights;
 use crate::ui::widgets::header::{read_device_status, HeaderStatus, SIDE_PAD};
 use crate::ui::widgets::remote_card::{REMOTE_MIN_H, REMOTE_NATURAL_H};
 use crate::ui::widgets::scene_card::SCENES_TITLE_H;
@@ -35,7 +36,8 @@ fn span_of(card: &CardConfig) -> Span {
         | CardConfig::ScenesRow { .. }
         | CardConfig::SensorGrid { .. }
         | CardConfig::MediaPlayer { .. }
-        | CardConfig::Remote { .. } => Span::Full,
+        | CardConfig::Remote { .. }
+        | CardConfig::Floorplan { .. } => Span::Full,
         _ => Span::Half,
     }
 }
@@ -82,6 +84,7 @@ fn heights(card: &CardConfig, w: f32) -> (f32, f32) {
             (nat, nat - rows as f32 * 10.0)
         }
         CardConfig::MediaPlayer { .. } => (180.0, 140.0),
+        CardConfig::Floorplan { title, cols, rows, .. } => floorplan_heights(w, *cols, *rows, title.is_some()),
         CardConfig::Lock { .. } => (150.0, 118.0),
         CardConfig::Remote { .. } => (REMOTE_NATURAL_H, REMOTE_MIN_H),
         CardConfig::Scene { .. } => (112.0, 86.0),
@@ -386,6 +389,19 @@ impl ScreenRenderer {
                 *large_value,
                 targets,
             ),
+            CardConfig::Floorplan { title, cols, rows, rooms, devices } => render_floorplan_card(
+                canvas,
+                theme,
+                rect,
+                title.as_deref(),
+                *cols,
+                *rows,
+                rooms,
+                devices,
+                states,
+                self.unlock_armed.as_deref(),
+                targets,
+            ),
             CardConfig::Lock { entity_id, title } => {
                 let armed = self.unlock_armed.as_deref() == Some(entity_id.as_str());
                 render_lock_card(canvas, theme, rect, entity_id, states.get(entity_id), title.as_deref(), armed, targets)
@@ -571,6 +587,111 @@ mod tests {
                 std::fs::write(format!("{}/aura-{}x{}.png", dir, w, h), canvas.to_grayscale_png_bytes().unwrap()).unwrap();
             }
         }
+    }
+
+    /// Two rooms side by side: a lit kitchen with a second switch, and a hall
+    /// holding only the front door lock.
+    fn plan_page() -> AppConfig {
+        use crate::config::{PlanDevice, PlanRoom};
+        let dev = |id: &str, x: f32, y: f32| PlanDevice { entity_id: id.to_string(), x, y, icon: None };
+        let mut config = AppConfig::default();
+        config.theme.mode = "high_contrast_bw".to_string();
+        config.pages = vec![crate::config::PageConfig {
+            id: "plan".to_string(),
+            title: "Plan".to_string(),
+            icon: "home".to_string(),
+            cards: vec![CardConfig::Floorplan {
+                title: None,
+                cols: 24,
+                rows: 16,
+                rooms: vec![
+                    PlanRoom { name: "Kitchen".to_string(), x: 0.0, y: 0.0, w: 14.0, h: 10.0 },
+                    PlanRoom { name: "Hall".to_string(), x: 14.0, y: 0.0, w: 10.0, h: 10.0 },
+                    PlanRoom { name: "Living room".to_string(), x: 0.0, y: 10.0, w: 24.0, h: 6.0 },
+                ],
+                devices: vec![
+                    dev("light.ceiling", 4.0, 5.0),
+                    dev("switch.heater", 10.0, 5.0),
+                    dev("lock.front_door", 19.0, 5.0),
+                    dev("sensor.living_room_temperature", 20.0, 13.0),
+                    dev("remote.living_room_tv", 5.0, 13.0),
+                ],
+            }],
+        }];
+        config
+    }
+
+    fn room_tap<'a>(renderer: &'a ScreenRenderer, rooms: usize) -> Vec<(&'a str, Vec<String>)> {
+        let found: Vec<_> = renderer
+            .targets
+            .iter()
+            .filter_map(|t| match &t.action {
+                UiAction::Service { domain, service, data } if domain == "homeassistant" => {
+                    let ids = data["entity_id"].as_array().unwrap().iter().map(|v| v.as_str().unwrap().to_string()).collect();
+                    Some((service.as_str(), ids))
+                }
+                _ => None,
+            })
+            .collect();
+        assert_eq!(found.len(), rooms);
+        found
+    }
+
+    #[test]
+    fn a_room_tap_switches_its_lights_and_never_its_lock() {
+        let _guard = crate::i18n::TEST_LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        crate::i18n::set_language("en");
+        let config = plan_page();
+        let mut states = crate::ha::mock::generate_mock_states();
+        states.get_mut("light.ceiling").unwrap().state = "on".to_string();
+        states.insert("switch.heater".to_string(), EntityState { entity_id: "switch.heater".to_string(), state: "off".to_string(), attributes: Default::default(), last_changed: None, last_updated: None });
+        let mut canvas = Canvas::for_screen(758, 1024);
+        let mut renderer = ScreenRenderer::new(&config);
+        renderer.render(&mut canvas, &config, 0, &states, false);
+        assert_eq!(renderer.hidden_cards, 0);
+
+        // Only the kitchen can be tapped as a room: the hall holds nothing a
+        // room tap may switch, and the living room only a reading and a remote.
+        let rooms = room_tap(&renderer, 1);
+        assert_eq!(rooms[0], ("turn_off", vec!["light.ceiling".to_string(), "switch.heater".to_string()]), "one light is on, so the room goes off");
+
+        // A tap on a device reaches the device, not the room under it
+        let hit = |id: &str| {
+            let t = renderer.targets.iter().rev().find(|t| match &t.action {
+                UiAction::ToggleEntity(e) | UiAction::LockTap(e) => e == id,
+                _ => false,
+            });
+            let r = t.unwrap_or_else(|| panic!("{} has no target", id)).rect;
+            renderer.handle_touch((r.x + r.w / 2.0) * canvas.scale, (r.y + r.h / 2.0) * canvas.scale)
+        };
+        assert!(matches!(hit("light.ceiling"), Some(UiAction::ToggleEntity(id)) if id == "light.ceiling"));
+        assert!(matches!(hit("lock.front_door"), Some(UiAction::LockTap(id)) if id == "lock.front_door"));
+        assert!(matches!(hit("remote.living_room_tv"), Some(UiAction::ToggleEntity(_))));
+
+        // With everything off, the same room tap turns the room on
+        states.get_mut("light.ceiling").unwrap().state = "off".to_string();
+        renderer.render(&mut canvas, &config, 0, &states, false);
+        assert_eq!(room_tap(&renderer, 1)[0].0, "turn_on");
+
+        if let Ok(dir) = std::env::var("KOBO_PREVIEW_DIR") {
+            states.get_mut("light.ceiling").unwrap().state = "on".to_string();
+            for (w, h, landscape) in [(758, 1024, false), (1024, 758, true)] {
+                let mut canvas = Canvas::for_screen(w, h);
+                renderer.render(&mut canvas, &config, 0, &states, landscape);
+                std::fs::write(format!("{}/plan-{}x{}.png", dir, w, h), canvas.to_grayscale_png_bytes().unwrap()).unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn a_floorplan_round_trips_through_yaml() {
+        let config = plan_page();
+        let yaml = serde_yaml::to_string(&config.pages[0].cards).unwrap();
+        let back: Vec<CardConfig> = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(serde_yaml::to_string(&back).unwrap(), yaml);
+        // A bare card gets a usable grid
+        let bare: Vec<CardConfig> = serde_yaml::from_str("- type: floorplan\n").unwrap();
+        assert!(matches!(&bare[0], CardConfig::Floorplan { cols: 24, rows: 16, rooms, devices, .. } if rooms.is_empty() && devices.is_empty()));
     }
 
     #[test]

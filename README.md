@@ -23,11 +23,57 @@ Added here:
 | Door lock | `lock` | Shows locked / unlocked. One tap locks. Unlocking needs a second tap on the same card within 6 seconds ("Tap again to unlock"), so a stray touch on a wall panel never opens the door. An offline lock cannot be tapped. |
 | TV remote | `remote` | For a `remote.*` entity such as the one the **Android TV Remote** integration creates. Arrows and OK, power, Home, Back, volume down / mute / up, previous / play-pause / next. |
 
-Both are offered in the setup tool's card list and are created automatically
-for `lock.*` and `remote.*` entities when it generates a starter dashboard.
+| Floorplan | `floorplan` | An overhead plan of the home. Rooms are rectangles on a grid that share walls where they touch, with devices placed inside them. Tap a device to work that device; tap the room around it to turn every light, switch and fan in the room off if any is on, otherwise all on. A lit room is shaded. |
 
-These two cards have been rendered and tested at Kobo Aura size on a computer.
-They have not yet been run on a physical Kobo.
+The lock and remote cards are created automatically for `lock.*` and
+`remote.*` entities when the setup tool generates a starter dashboard, and all
+three are in its card list.
+
+<p align="center"><img src="docs/images/aura-floorplan.png" width="380" alt="Floorplan on a Kobo Aura"></p>
+
+### Drawing the floorplan
+
+In the setup tool's **Design** step, add a *Floorplan* card and open it:
+
+- Drag **+ Room** onto the plan (or click it). Drag a room to move it and drag
+  its bottom-right corner to resize it. Rooms snap to the grid, so placing two
+  side by side makes them share a wall. Click a room to rename or remove it.
+- Drag a device from the list on the left onto the plan, and drag it again to
+  move it. The search box narrows the list. Click a device to change its icon
+  or remove it. A device belongs to whichever room it sits in.
+- *Plan width* and *Plan height* set the size of the grid in squares.
+
+The preview on the right shows the plan as the Kobo will draw it.
+
+What a tap does on the Kobo:
+
+| Tapped | Result |
+|---|---|
+| Light, switch, fan, TV | Toggles it |
+| Lock | Locks at once; unlocking needs a second tap within 6 seconds |
+| Scene, script, button | Runs it |
+| Temperature or other sensor | Shown as a reading; not tappable |
+| Room | Switches its lights, switches and fans together. Never locks, TVs or heating |
+
+## What has been done so far
+
+1. Imported kobo-ha-dashboard 0.3.18 as the base (native e-ink drawing,
+   partial refresh, touch, sleep, setup tool).
+2. Added the **door lock** card with its two-tap unlock.
+3. Added the **TV remote** card for Android TV / Google TV.
+4. Added the **floorplan** card and its drag-and-drop editor in the setup tool.
+5. Translated the new text into all eleven languages the app ships with.
+6. Added automated tests for each new card (81 tests in total pass).
+7. Set the build to produce the Kobo program and the Windows and Linux setup
+   tools on every push to the `kobo-dashboard` branch.
+
+### Not yet verified
+
+- Nothing here has run on a physical Kobo. The new cards were rendered and
+  tested at Kobo Aura size on a computer, and the floorplan editor was tested
+  in a desktop browser.
+- The lock, remote and floorplan cards have not been used against a real Home
+  Assistant; they were tested with simulated devices.
 
 ## Install (Windows PC + Kobo)
 

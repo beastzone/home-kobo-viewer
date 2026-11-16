@@ -182,6 +182,11 @@ design:
   buttons: "Tasten"
   add: "+ Hinzufügen"
   remove: "Entfernen"
+  plan_room: "Raum"
+  plan_search: "Geräte suchen…"
+  plan_hint: "Ziehe einen Raum oder ein Gerät auf den Plan. Zum Verschieben ziehen; zum Ändern der Größe an der Ecke des Raums ziehen."
+  plan_cols: "Planbreite (Kästchen)"
+  plan_rows: "Planhöhe (Kästchen)"
 
 card_types:
   weather: "Wetter"
@@ -193,6 +198,7 @@ card_types:
   media_player: "Mediaplayer"
   lock: "Türschloss"
   remote: "TV-Fernbedienung"
+  floorplan: "Grundriss"
   scenes_row: "Szenen-Tasten"
   scene: "Einzelne Taste"
 

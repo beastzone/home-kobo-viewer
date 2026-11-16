@@ -156,6 +156,23 @@ pages:
         entity_id: "lock.front_door"
         title: "Front door"
 
+      # Overhead plan of the home. Rooms sit on a grid of squares (cols x rows)
+      # and share walls where they touch; devices are placed by their centre.
+      # A tap on a device works that device. A tap on the room around it turns
+      # every light, switch and fan in the room off if any is on, otherwise on.
+      # Easiest drawn in the setup tool: drag rooms and devices onto the plan.
+      - type: "floorplan"
+        cols: 24
+        rows: 16
+        rooms:
+          - { name: "Kitchen", x: 0, y: 0, w: 14, h: 10 }
+          - { name: "Hall", x: 14, y: 0, w: 10, h: 10 }
+          - { name: "Living room", x: 0, y: 10, w: 24, h: 6 }
+        devices:
+          - { entity_id: "light.kitchen", x: 5, y: 5 }
+          - { entity_id: "lock.front_door", x: 19, y: 5 }
+          - { entity_id: "light.living_room", x: 8, y: 13 }
+
       # TV remote (a remote.* entity, e.g. from the Android TV Remote integration):
       # arrows and OK, power, home, back, volume, mute and playback keys
       - type: "remote"

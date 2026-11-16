@@ -182,6 +182,11 @@ design:
   buttons: "Botones"
   add: "+ Añadir"
   remove: "Quitar"
+  plan_room: "Habitación"
+  plan_search: "Buscar dispositivos…"
+  plan_hint: "Arrastra una habitación o un dispositivo al plano. Arrastra para moverlo; arrastra la esquina de una habitación para cambiar su tamaño."
+  plan_cols: "Ancho del plano (cuadros)"
+  plan_rows: "Alto del plano (cuadros)"
 
 card_types:
   weather: "Tiempo"
@@ -193,6 +198,7 @@ card_types:
   media_player: "Reproductor multimedia"
   lock: "Cerradura"
   remote: "Mando de TV"
+  floorplan: "Plano"
   scenes_row: "Botones de escena"
   scene: "Botón único"
 

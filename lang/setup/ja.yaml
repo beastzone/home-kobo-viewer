@@ -182,6 +182,11 @@ design:
   buttons: "ボタン"
   add: "+ 追加"
   remove: "削除"
+  plan_room: "部屋"
+  plan_search: "デバイスを検索…"
+  plan_hint: "部屋やデバイスを図面にドラッグします。ドラッグで移動、部屋の角をドラッグでサイズ変更。"
+  plan_cols: "図面の幅（マス）"
+  plan_rows: "図面の高さ（マス）"
 
 card_types:
   weather: "天気"
@@ -193,6 +198,7 @@ card_types:
   media_player: "メディアプレーヤー"
   lock: "ドアロック"
   remote: "テレビリモコン"
+  floorplan: "間取り図"
   scenes_row: "シーンボタン"
   scene: "単独ボタン"
 

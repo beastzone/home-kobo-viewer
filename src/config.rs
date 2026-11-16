@@ -401,6 +401,20 @@ pub enum CardConfig {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         title: Option<String>,
     },
+    /// Overhead plan: rooms on a `cols` x `rows` grid with devices placed in them
+    #[serde(rename = "floorplan")]
+    Floorplan {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        title: Option<String>,
+        #[serde(default = "default_plan_cols")]
+        cols: u32,
+        #[serde(default = "default_plan_rows")]
+        rows: u32,
+        #[serde(default)]
+        rooms: Vec<PlanRoom>,
+        #[serde(default)]
+        devices: Vec<PlanDevice>,
+    },
     #[serde(rename = "scene")]
     Scene {
         entity_id: String,
@@ -434,6 +448,35 @@ pub struct SensorItemConfig {
     pub icon: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unit: Option<String>,
+}
+
+/// A room of a floorplan, in grid squares from the top-left corner
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlanRoom {
+    #[serde(default)]
+    pub name: String,
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+}
+
+/// A device on a floorplan; `x`, `y` is its centre in grid squares
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PlanDevice {
+    pub entity_id: String,
+    pub x: f32,
+    pub y: f32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub icon: Option<String>,
+}
+
+fn default_plan_cols() -> u32 {
+    24
+}
+
+fn default_plan_rows() -> u32 {
+    16
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

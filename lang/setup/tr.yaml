@@ -182,6 +182,11 @@ design:
   buttons: "Butonlar"
   add: "+ Ekle"
   remove: "Kaldır"
+  plan_room: "Oda"
+  plan_search: "Cihaz ara…"
+  plan_hint: "Bir odayı veya cihazı plana sürükleyin. Taşımak için sürükleyin; boyutlandırmak için odanın köşesini sürükleyin."
+  plan_cols: "Plan genişliği (kare)"
+  plan_rows: "Plan yüksekliği (kare)"
 
 card_types:
   weather: "Hava durumu"
@@ -193,6 +198,7 @@ card_types:
   media_player: "Medya oynatıcı"
   lock: "Kapı kilidi"
   remote: "TV kumandası"
+  floorplan: "Kat planı"
   scenes_row: "Sahne butonları"
   scene: "Tek buton"
 

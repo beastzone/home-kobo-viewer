@@ -182,6 +182,11 @@ design:
   buttons: "Knoppen"
   add: "+ Toevoegen"
   remove: "Verwijderen"
+  plan_room: "Kamer"
+  plan_search: "Apparaten zoeken…"
+  plan_hint: "Sleep een kamer of een apparaat naar de plattegrond. Sleep om te verplaatsen; sleep de hoek van een kamer om de grootte te wijzigen."
+  plan_cols: "Breedte (vakjes)"
+  plan_rows: "Hoogte (vakjes)"
 
 card_types:
   weather: "Weer"
@@ -193,6 +198,7 @@ card_types:
   media_player: "Mediaspeler"
   lock: "Deurslot"
   remote: "Tv-afstandsbediening"
+  floorplan: "Plattegrond"
   scenes_row: "Scèneknoppen"
   scene: "Losse knop"
 
