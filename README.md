@@ -165,13 +165,21 @@ reinstalling it after a Kobo software update), and the name of the menu entry.
 10. Brought the phone web panel and the Home Assistant setup guide into this
    repository, so everything is in one place.
 
+### Confirmed on a real Kobo Aura (v0.5.2, 16 November 2026)
+
+- Installing by USB from the Windows setup tool, and starting the dashboard
+  from the Kobo's menu.
+- Receiving an update over Wi-Fi straight from the setup tool.
+- Turning a TV on and off, the weather card, and the floorplan showing.
+
 ### Not yet verified
 
-- Nothing here has run on a physical Kobo. The new cards were rendered and
-  tested at Kobo Aura size on a computer, and the floorplan editor was tested
-  in a desktop browser.
-- The lock, remote and floorplan cards have not been used against a real Home
-  Assistant; they were tested with simulated devices.
+- On the Kobo: the door lock card and its two-tap unlock, the TV remote's
+  arrow, volume and playback keys, tapping rooms and devices on the
+  floorplan, and the hour-by-hour weather page. These were tested on a
+  computer with simulated devices.
+- A Kobo on Wi-Fi updates needs the 0.5.2 program or later: earlier versions
+  only look in the Home Assistant folder, so the first move to 0.5.2 is by USB.
 - Updates over Wi-Fi were tested on a computer: a real download over HTTP from
   the setup tool's update server, the signature and hash checks, and the
   launcher's swap and rollback run with stand-in programs. They have not been
