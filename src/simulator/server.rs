@@ -156,7 +156,14 @@ async fn handle_touch(
                     r.unlock_armed = Some(entity_id);
                 }
             }
+            UiAction::OpenWeatherDay(entity, day) => {
+                state.renderer.write().await.weather_detail = Some((entity, day));
+            }
+            UiAction::CloseDetail => {
+                state.renderer.write().await.weather_detail = None;
+            }
             UiAction::SwitchPage(idx) => {
+                state.renderer.write().await.weather_detail = None;
                 let mut p = state.active_page.write().await;
                 *p = idx;
             }

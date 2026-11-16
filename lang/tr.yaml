@@ -46,6 +46,7 @@ media:
 
 weather:
   no_forecast: "Tahmin verisi yok"
+  no_hourly: "Bu gün için saatlik tahmin yok"
   wind_kmh: "km/sa"
   condition:
     sunny: "Güneşli"

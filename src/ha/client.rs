@@ -1,6 +1,7 @@
 use crate::config::{AppConfig, CardConfig, HomeAssistantConfig};
 use crate::ha::mock::generate_mock_states;
 use crate::ha::models::EntityState;
+use crate::ui::widgets::weather_detail::HOURLY_ATTR;
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -44,6 +45,8 @@ pub struct HaClient {
 #[derive(Default)]
 struct Extras {
     forecasts: HashMap<String, Value>,
+    /// Hour-by-hour forecasts, where the weather integration offers them
+    hourly: HashMap<String, Value>,
     history: HashMap<String, Vec<f32>>,
     last_history_fetch: Option<Instant>,
     last_forecast_fetch: Option<Instant>,
@@ -169,6 +172,9 @@ impl HaClient {
         if let Some(fc) = extras.forecasts.get(&state.entity_id) {
             state.attributes.insert("forecast".to_string(), fc.clone());
         }
+        if let Some(fc) = extras.hourly.get(&state.entity_id) {
+            state.attributes.insert(HOURLY_ATTR.to_string(), fc.clone());
+        }
         if let Some(h) = extras.history.get(&state.entity_id) {
             state.attributes.insert(HISTORY_ATTR.to_string(), serde_json::json!(h));
         }
@@ -240,6 +246,9 @@ impl HaClient {
                     if let Some(fc) = extras.forecasts.get(&state.entity_id) {
                         state.attributes.insert("forecast".to_string(), fc.clone());
                     }
+                    if let Some(fc) = extras.hourly.get(&state.entity_id) {
+                        state.attributes.insert(HOURLY_ATTR.to_string(), fc.clone());
+                    }
                     if let Some(h) = extras.history.get(&state.entity_id) {
                         state.attributes.insert(HISTORY_ATTR.to_string(), serde_json::json!(h));
                     }
@@ -280,17 +289,24 @@ impl HaClient {
 
         if need_forecast && !self.weather_entities.is_empty() {
             let mut forecasts = HashMap::new();
+            let mut hourly = HashMap::new();
             for entity in self.weather_entities.iter() {
-                match self.fetch_forecast(entity).await {
+                match self.fetch_forecast(entity, "daily").await {
                     Ok(Some(fc)) => {
                         forecasts.insert(entity.clone(), fc);
                     }
                     Ok(None) => {}
                     Err(e) => tracing::warn!("Forecast fetch for {} failed: {}", entity, e),
                 }
+                // Not every weather integration has an hourly forecast; the
+                // day page then says so instead of listing hours.
+                if let Ok(Some(fc)) = self.fetch_forecast(entity, "hourly").await {
+                    hourly.insert(entity.clone(), fc);
+                }
             }
             let mut ex = self.extras.write().await;
             ex.forecasts = forecasts;
+            ex.hourly = hourly;
             ex.last_forecast_fetch = Some(Instant::now());
         }
 
@@ -306,11 +322,11 @@ impl HaClient {
         }
     }
 
-    async fn fetch_forecast(&self, entity_id: &str) -> Result<Option<Value>, Box<dyn std::error::Error + Send + Sync>> {
+    async fn fetch_forecast(&self, entity_id: &str, kind: &str) -> Result<Option<Value>, Box<dyn std::error::Error + Send + Sync>> {
         let resp = self
             .client
             .post(self.url("/api/services/weather/get_forecasts?return_response"))
-            .json(&serde_json::json!({ "entity_id": entity_id, "type": "daily" }))
+            .json(&serde_json::json!({ "entity_id": entity_id, "type": kind }))
             .send()
             .await?;
         if !resp.status().is_success() {

@@ -86,6 +86,8 @@ enum Command {
 
 /// Ignore taps arriving faster than this (e-ink ghost/bounce protection)
 const TAP_DEBOUNCE: Duration = Duration::from_millis(350);
+/// A weather detail page nobody touches returns to the dashboard after this
+const DETAIL_TIMEOUT: Duration = Duration::from_secs(120);
 /// How long a lock card waits for the second tap that confirms an unlock
 const UNLOCK_CONFIRM: Duration = Duration::from_secs(6);
 /// For this long after a tap, pushed updates are drawn right away (so a
@@ -771,6 +773,17 @@ async fn run_device(
                     }
                     UiAction::SwitchPage(idx) => {
                         active_page = idx;
+                        renderer.weather_detail = None;
+                        force_full = true;
+                        None
+                    }
+                    UiAction::OpenWeatherDay(entity, day) => {
+                        renderer.weather_detail = Some((entity, day));
+                        force_full = true;
+                        None
+                    }
+                    UiAction::CloseDetail => {
+                        renderer.weather_detail = None;
                         force_full = true;
                         None
                     }
@@ -870,8 +883,13 @@ async fn run_device(
                     wifi_on_in_background(wifi_script.clone(), ha_client.clone(), wake_tx.clone());
                     continue;
                 }
+                // A detail page left open goes back to the dashboard by itself.
+                let closing = renderer.weather_detail.is_some() && last_activity.elapsed() > DETAIL_TIMEOUT;
+                if closing {
+                    renderer.weather_detail = None;
+                }
                 redraw(&mut renderer, &mut canvas, &config, active_page, &ha_client).await;
-                flush(&mut fb, &canvas, false);
+                flush(&mut fb, &canvas, closing);
             }
 
             Some(()) = update_rx.recv() => {

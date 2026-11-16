@@ -206,6 +206,8 @@ pub struct ScreenRenderer {
     pub sleep_until: Option<String>,
     /// Draw the "battery empty" screen instead of the dashboard
     pub battery_empty: bool,
+    /// Weather day open as a full page: (weather entity, that day's forecast time)
+    pub weather_detail: Option<(String, String)>,
     /// Lock waiting for its second, confirming tap before it unlocks
     pub unlock_armed: Option<String>,
     /// Pixels per UI unit on the last rendered canvas
@@ -223,6 +225,7 @@ impl ScreenRenderer {
             sleep_until: None,
             battery_empty: false,
             unlock_armed: None,
+            weather_detail: None,
             scale: 1.0,
         }
     }
@@ -278,8 +281,16 @@ impl ScreenRenderer {
         let placements = zones_for(&page.cards, w, h - reserve, header_bottom);
         self.hidden_cards = page.cards.len() - placements.len();
 
-        for (card, rect) in placements {
-            self.render_card(canvas, card, rect, states);
+        if let Some((entity, day)) = self.weather_detail.clone() {
+            // A detail page takes the place of the cards; header and tabs stay.
+            self.hidden_cards = 0;
+            let now = crate::ui::widgets::header::now_local(&config.theme);
+            let area = Rect::new(SIDE_PAD, header_bottom, w - 2.0 * SIDE_PAD, (h - reserve - header_bottom - SIDE_PAD).max(120.0));
+            render_weather_detail(canvas, &self.theme, area, states.get(&entity), &day, *now.offset(), config.theme.time_format == "12h", &mut self.targets);
+        } else {
+            for (card, rect) in placements {
+                self.render_card(canvas, card, rect, states);
+            }
         }
 
         if let Some(next) = self.sleep_until.clone() {
@@ -692,6 +703,76 @@ mod tests {
         // A bare card gets a usable grid
         let bare: Vec<CardConfig> = serde_yaml::from_str("- type: floorplan\n").unwrap();
         assert!(matches!(&bare[0], CardConfig::Floorplan { cols: 24, rows: 16, rooms, devices, .. } if rooms.is_empty() && devices.is_empty()));
+    }
+
+    #[test]
+    fn tapping_a_forecast_day_opens_its_hours_and_back_returns() {
+        let _guard = crate::i18n::TEST_LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        crate::i18n::set_language("en");
+        let mut config = AppConfig::default();
+        config.theme.mode = "high_contrast_bw".to_string();
+        config.theme.utc_offset = Some("+00:00".to_string());
+        let states = crate::ha::mock::generate_mock_states();
+        let weather = config.pages[0].cards.iter().find_map(|c| match c {
+            CardConfig::Weather { entity_id, .. } => Some(entity_id.clone()),
+            _ => None,
+        });
+        let weather = weather.expect("the demo page has a weather card");
+        for (w, h, landscape) in [(758, 1024, false), (1024, 758, true)] {
+            let mut canvas = Canvas::for_screen(w, h);
+            let mut renderer = ScreenRenderer::new(&config);
+            renderer.render(&mut canvas, &config, 0, &states, landscape);
+            // One target per forecast day, each naming a different day
+            let days: Vec<(Rect, String)> = renderer
+                .targets
+                .iter()
+                .filter_map(|t| match &t.action {
+                    UiAction::OpenWeatherDay(e, day) if *e == weather => Some((t.rect, day.clone())),
+                    _ => None,
+                })
+                .collect();
+            assert!(days.len() >= 3, "{}x{}: {}", w, h, days.len());
+            let mut distinct: Vec<&String> = days.iter().map(|(_, d)| d).collect();
+            distinct.dedup();
+            assert_eq!(distinct.len(), days.len());
+            // A tap on tomorrow's column means tomorrow, not the card's refresh
+            let (r, tomorrow) = &days[1];
+            let tapped = renderer.handle_touch((r.x + r.w / 2.0) * canvas.scale, (r.y + r.h / 2.0) * canvas.scale);
+            assert!(matches!(&tapped, Some(UiAction::OpenWeatherDay(_, d)) if d == tomorrow));
+
+            renderer.weather_detail = Some((weather.clone(), tomorrow.clone()));
+            renderer.render(&mut canvas, &config, 0, &states, landscape);
+            assert!(renderer.targets.iter().any(|t| matches!(t.action, UiAction::CloseDetail)), "a way back");
+            assert!(!renderer.targets.iter().any(|t| matches!(t.action, UiAction::ToggleEntity(_) | UiAction::OpenWeatherDay(..))), "the cards are not under the page");
+            if let Ok(dir) = std::env::var("KOBO_PREVIEW_DIR") {
+                std::fs::write(format!("{}/weather-{}x{}.png", dir, w, h), canvas.to_grayscale_png_bytes().unwrap()).unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn a_day_page_lists_that_local_days_hours_only() {
+        use crate::ui::widgets::weather_detail::{hours_of_day, local_date, HOURLY_ATTR};
+        use chrono::Timelike;
+        // 03:00 UTC on the 17th is still the 16th in New York (UTC-5)
+        let ny = chrono::FixedOffset::west_opt(5 * 3600).unwrap();
+        let utc = chrono::FixedOffset::east_opt(0).unwrap();
+        let hours: Vec<serde_json::Value> = (0..30)
+            .map(|h| serde_json::json!({ "datetime": format!("2026-11-{:02}T{:02}:00:00+00:00", 16 + h / 24, h % 24), "condition": "sunny", "temperature": 10.0 }))
+            .collect();
+        let mut state = crate::ha::mock::generate_mock_states().remove("weather.home").unwrap();
+        state.attributes.insert(HOURLY_ATTR.to_string(), serde_json::json!(hours));
+        let day = |d| chrono::NaiveDate::from_ymd_opt(2026, 11, d).unwrap();
+        assert_eq!(local_date("2026-11-17T03:00:00+00:00", ny), Some(day(16)));
+        assert_eq!(local_date("2026-11-17T03:00:00+00:00", utc), Some(day(17)));
+        assert_eq!(hours_of_day(Some(&state), day(16), utc).len(), 24);
+        assert_eq!(hours_of_day(Some(&state), day(17), utc).len(), 6);
+        // In New York the same data starts at 19:00 on the 15th
+        let ny_16 = hours_of_day(Some(&state), day(16), ny);
+        assert_eq!((ny_16.len(), ny_16[0].0.hour()), (24, 0));
+        assert_eq!(hours_of_day(Some(&state), day(15), ny).len(), 5);
+        assert!(hours_of_day(Some(&state), day(20), utc).is_empty(), "beyond the hourly forecast");
+        assert!(hours_of_day(None, day(16), utc).is_empty());
     }
 
     #[test]

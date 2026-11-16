@@ -9,6 +9,7 @@ pub mod scene_card;
 pub mod sensor_card;
 pub mod switch_card;
 pub mod weather_card;
+pub mod weather_detail;
 
 pub use climate_card::render_climate_card;
 pub use floorplan_card::render_floorplan_card;
@@ -21,6 +22,7 @@ pub use scene_card::render_scenes_row;
 pub use sensor_card::{render_sensor_card, render_sensor_grid};
 pub use switch_card::render_switch_card;
 pub use weather_card::render_weather_card;
+pub use weather_detail::render_weather_detail;
 
 use crate::display::{Canvas, TextAlign};
 use crate::ui::layout::Rect;

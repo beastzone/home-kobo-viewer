@@ -46,6 +46,7 @@ media:
 
 weather:
   no_forecast: "暂无预报"
+  no_hourly: "这一天没有逐小时预报"
   wind_kmh: "公里/时"
   condition:
     sunny: "晴"

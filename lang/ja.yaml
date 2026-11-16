@@ -46,6 +46,7 @@ media:
 
 weather:
   no_forecast: "予報データなし"
+  no_hourly: "この日の時間ごとの予報はありません"
   wind_kmh: "km/h"
   condition:
     sunny: "晴れ"

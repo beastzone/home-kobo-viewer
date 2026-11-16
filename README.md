@@ -34,6 +34,15 @@ Added here:
 
 | Floorplan | `floorplan` | An overhead plan of the home. Rooms are rectangles on a grid that share walls where they touch, with devices placed inside them. Tap a device to work that device; tap the room around it to turn every light, switch and fan in the room off if any is on, otherwise all on. A lit room is shaded. |
 
+The **weather card** also gained a day page: tap any day in its forecast strip
+and the page shows that day hour by hour (time, conditions, temperature,
+chance of rain), with a back button. It returns to the dashboard by itself
+after two minutes untouched. Hours come from the weather integration's hourly
+forecast, which usually covers the next one to two days; a day beyond that, or
+an integration without hourly data, shows "No hourly forecast for this day".
+
+<p align="center"><img src="docs/images/aura-weather-hours.png" width="380" alt="A day's weather hour by hour on a Kobo Aura"></p>
+
 The lock and remote cards are created automatically for `lock.*` and
 `remote.*` entities when the setup tool generates a starter dashboard, and all
 three are in its card list.
@@ -123,11 +132,12 @@ reinstalling it after a Kobo software update), and the name of the menu entry.
 4. Added the **floorplan** card and its drag-and-drop editor in the setup tool.
 5. Added **updates over Wi-Fi** for the layout and the program, signed, with
    automatic rollback of a program that fails to start.
-6. Translated the new text into all eleven languages the app ships with.
-7. Added automated tests for every addition (87 tests in total pass).
-8. Set the build to publish the Kobo program and the Windows and Linux setup
+6. Added the **hour-by-hour weather page**, opened by tapping a forecast day.
+7. Translated the new text into all eleven languages the app ships with.
+8. Added automated tests for every addition (89 tests in total pass).
+9. Set the build to publish the Kobo program and the Windows and Linux setup
    tools as a release on every push to `main`.
-9. Brought the phone web panel and the Home Assistant setup guide into this
+10. Brought the phone web panel and the Home Assistant setup guide into this
    repository, so everything is in one place.
 
 ### Not yet verified
@@ -190,7 +200,7 @@ cargo run -- --simulator   # interactive preview with demo data
 
 Every push to `main` runs `.github/workflows/release.yml`, which builds the
 Kobo program and the Windows and Linux setup tools and publishes them as the
-release for the version in `Cargo.toml` (`v0.5.0`, ...). Raise that version to
+release for the version in `Cargo.toml` (`v0.5.1`, ...). Raise that version to
 get a new release; pushes without a version change refresh the files of the
 existing one.
 

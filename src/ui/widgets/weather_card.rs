@@ -25,7 +25,7 @@ pub fn render_weather_card(
     canvas: &mut Canvas,
     theme: &Theme,
     rect: Rect,
-    _entity_id: &str,
+    entity_id: &str,
     state: Option<&EntityState>,
     custom_title: Option<&str>,
     forecast_days: usize,
@@ -144,9 +144,20 @@ pub fn render_weather_card(
         }
     }
 
-    // Tapping weather card triggers refresh
+    // Tapping the weather card refreshes; tapping one of its days opens that
+    // day hour by hour (pushed later, so a day wins over the card under it).
     targets.push(InteractiveTarget {
         rect,
         action: UiAction::Refresh,
     });
+    if !forecast.is_empty() {
+        let count = forecast.len().min(forecast_days.max(1));
+        let col_w = (rect.w - 2.0 * PAD) / count as f32;
+        for (i, item) in forecast.iter().take(count).enumerate() {
+            targets.push(InteractiveTarget {
+                rect: Rect::new(x0 + col_w * i as f32, divider_y, col_w, rect.y + rect.h - divider_y),
+                action: UiAction::OpenWeatherDay(entity_id.to_string(), item.datetime.clone()),
+            });
+        }
+    }
 }

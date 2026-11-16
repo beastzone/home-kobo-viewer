@@ -46,6 +46,7 @@ media:
 
 weather:
   no_forecast: "Sin previsión"
+  no_hourly: "No hay previsión por horas para este día"
   wind_kmh: "km/h"
   condition:
     sunny: "Soleado"

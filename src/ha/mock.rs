@@ -5,6 +5,34 @@ use std::collections::HashMap;
 pub fn generate_mock_states() -> HashMap<String, EntityState> {
     let mut map = HashMap::new();
 
+    // Forecasts dated from today, so a tapped day has hours to show:
+    // five days, and the next 48 hours.
+    let now = chrono::Utc::now();
+    let noon = |days: i64| (now + chrono::Duration::days(days)).format("%Y-%m-%dT12:00:00+00:00").to_string();
+    let daily = json!([
+        { "datetime": noon(0), "condition": "partlycloudy", "temperature": 23.0, "templow": 15.0 },
+        { "datetime": noon(1), "condition": "sunny", "temperature": 24.5, "templow": 16.0 },
+        { "datetime": noon(2), "condition": "rainy", "temperature": 19.0, "templow": 13.5 },
+        { "datetime": noon(3), "condition": "cloudy", "temperature": 20.0, "templow": 14.0 },
+        { "datetime": noon(4), "condition": "sunny", "temperature": 22.0, "templow": 15.0 }
+    ]);
+    let hourly: Vec<serde_json::Value> = (0..48i64)
+        .map(|h| {
+            let t = now + chrono::Duration::hours(h);
+            let hour = t.format("%H").to_string().parse::<f32>().unwrap_or(0.0);
+            let warmth = 1.0 - ((hour - 14.0).abs() / 12.0).min(1.0);
+            let spell = (h as usize / 6) % 4;
+            let (condition, rain) = (["partlycloudy", "sunny", "cloudy", "rainy"][spell], [10, 0, 30, 80][spell]);
+            json!({
+                "datetime": t.format("%Y-%m-%dT%H:00:00+00:00").to_string(),
+                "condition": condition,
+                "temperature": (14.0 + 9.0 * warmth).round(),
+                "precipitation_probability": rain,
+                "wind_speed": 8.0 + (h % 5) as f32 * 2.0
+            })
+        })
+        .collect();
+
     // 1. Weather
     map.insert(
         "weather.home".to_string(),
@@ -17,13 +45,8 @@ pub fn generate_mock_states() -> HashMap<String, EntityState> {
                 "humidity": 52,
                 "wind_speed": 14.5,
                 "pressure": 1014,
-                "forecast": [
-                    { "datetime": "2026-10-17T12:00:00", "condition": "partlycloudy", "temperature": 23.0, "templow": 15.0 },
-                    { "datetime": "2026-10-18T12:00:00", "condition": "sunny", "temperature": 24.5, "templow": 16.0 },
-                    { "datetime": "2026-10-19T12:00:00", "condition": "rainy", "temperature": 19.0, "templow": 13.5 },
-                    { "datetime": "2026-10-20T12:00:00", "condition": "cloudy", "temperature": 20.0, "templow": 14.0 },
-                    { "datetime": "2026-10-21T12:00:00", "condition": "sunny", "temperature": 22.0, "templow": 15.0 }
-                ]
+                "forecast": daily,
+                "forecast_hourly": hourly
             })).unwrap(),
             last_changed: None,
             last_updated: None,

@@ -67,6 +67,7 @@ remote:
 
 weather:
   no_forecast: "No forecast data"
+  no_hourly: "No hourly forecast for this day"
   wind_kmh: "km/h"
   condition:
     sunny: "Sunny"

@@ -37,6 +37,10 @@ pub enum UiAction {
     LockTap(String),
     /// Any other Home Assistant service call (remote keys...)
     Service { domain: String, service: String, data: serde_json::Value },
+    /// A day of the weather card tapped: weather entity and that day's forecast time
+    OpenWeatherDay(String, String),
+    /// Back from a detail page to the dashboard
+    CloseDetail,
     SwitchPage(usize),
     Refresh,
     ToggleFrontlight,
