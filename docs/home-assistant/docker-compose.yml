@@ -1,0 +1,21 @@
+# Home Assistant Container. Use this only if you are not taking the Hyper-V
+# route in README.md (which is the better fit for a Windows server).
+#
+#   docker compose up -d      then open  http://<server-ip>:8123
+#
+# ./config holds everything Home Assistant knows; back that folder up.
+# The panel goes in ./config/www/panel/index.html.
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    environment:
+      - TZ=America/New_York        # change to your time zone
+    volumes:
+      - ./config:/config
+    ports:
+      - "8123:8123"
+    # On a Linux host you would use `network_mode: host` instead of `ports`
+    # so devices are discovered automatically. Docker on Windows cannot do
+    # that, which is why discovery is limited on this route.

@@ -7,6 +7,15 @@ software 4.x, with a door lock and a Google TV.
 
 <p align="center"><img src="docs/images/aura-lock-remote.png" width="380" alt="Lock and TV remote cards on a Kobo Aura"></p>
 
+## What is in this repository
+
+| Path | What it is |
+|---|---|
+| `src/`, `deploy/`, `lang/`, `assets/` | The native Kobo dashboard and its setup tool (this page) |
+| [`phone-panel/`](phone-panel/index.html) | A single-file web dashboard for phones, served by Home Assistant |
+| [`docs/home-assistant/`](docs/home-assistant/README.md) | Guide: installing Home Assistant on a Windows server, adding devices, installing the phone panel |
+| [`docs/upstream/`](docs/upstream/README.md) | Documentation of the project this is forked from |
+
 ## Where this comes from
 
 This is a fork of [armamut/kobo-ha-dashboard](https://github.com/armamut/kobo-ha-dashboard)
@@ -116,8 +125,10 @@ reinstalling it after a Kobo software update), and the name of the menu entry.
    automatic rollback of a program that fails to start.
 6. Translated the new text into all eleven languages the app ships with.
 7. Added automated tests for every addition (87 tests in total pass).
-8. Set the build to produce the Kobo program and the Windows and Linux setup
-   tools on every push to the `kobo-dashboard` branch.
+8. Set the build to publish the Kobo program and the Windows and Linux setup
+   tools as a release on every push to `main`.
+9. Brought the phone web panel and the Home Assistant setup guide into this
+   repository, so everything is in one place.
 
 ### Not yet verified
 
@@ -133,8 +144,9 @@ reinstalling it after a Kobo software update), and the name of the menu entry.
 
 ## Install (Windows PC + Kobo)
 
-1. Download `kobo-ha-dashboard-<version>-windows-x64.zip` from this
-   repository's **Releases** page and unzip it.
+1. On this repository's page on GitHub, open **Releases** (right-hand side),
+   pick the newest one, download `kobo-ha-dashboard-<version>-windows-x64.zip`
+   under *Assets* and unzip it.
 2. Run `kobo-ha-dashboard.exe`. A page opens at `http://localhost:3000`.
    Windows may warn that the program is unsigned: choose *More info → Run anyway*.
 3. **Connect**: enter Home Assistant's address by IP, for example
@@ -176,9 +188,11 @@ cargo run -- --simulator   # interactive preview with demo data
 ./deploy/build-kobo.sh     # ARMv7 build for the Kobo
 ```
 
-Pushing a tag such as `v0.4.0` runs `.github/workflows/release.yml`, which
-builds the Kobo program and the Windows and Linux setup tools and publishes
-them as a release.
+Every push to `main` runs `.github/workflows/release.yml`, which builds the
+Kobo program and the Windows and Linux setup tools and publishes them as the
+release for the version in `Cargo.toml` (`v0.5.0`, ...). Raise that version to
+get a new release; pushes without a version change refresh the files of the
+existing one.
 
 ## Licence
 

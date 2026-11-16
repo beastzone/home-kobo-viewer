@@ -1,12 +1,12 @@
 name: Release
 
-# Push a tag like v0.2.0 to build every package and publish a GitHub release.
-# Pushes to the working branch build the same packages and keep them as
-# downloadable artifacts of the run, without publishing a release.
+# Every push to main builds every package and publishes them as the GitHub
+# release for the version in Cargo.toml (v0.5.0, ...): raise that version for a
+# new release; otherwise the existing release's files are refreshed.
 on:
   push:
-    tags: ["v*"]
-    branches: [kobo-dashboard]
+    branches: [main]
+    paths-ignore: ["docs/**", "phone-panel/**", "**.md"]
   workflow_dispatch:
 
 permissions:
@@ -57,7 +57,8 @@ jobs:
       - name: Package
         shell: bash
         run: |
-          PKG="kobo-ha-dashboard-${{ github.ref_name }}-${{ matrix.name }}"
+          VERSION="v$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)"
+          PKG="kobo-ha-dashboard-$VERSION-${{ matrix.name }}"
           mkdir -p "$PKG/kobo"
           cp "target/${{ matrix.target }}/release/kobo-ha-dashboard${{ matrix.exe }}" "$PKG/"
           cp kobo-binary/kobo-ha-dashboard "$PKG/kobo/kobo-ha-dashboard"
@@ -76,14 +77,22 @@ jobs:
 
   publish:
     needs: desktop
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
+      - id: version
+        run: echo "tag=v$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v8
         with:
           path: dist
+          pattern: "*-x64"
           merge-multiple: true
       - uses: softprops/action-gh-release@v3
         with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Home Kobo Viewer ${{ steps.version.outputs.tag }}
           files: dist/*.zip
+          make_latest: true
           generate_release_notes: true

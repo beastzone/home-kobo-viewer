@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Home Panel</title>
+<style>
+/* Written for the oldest browser that will ever open it (the Kobo's WebKit):
+   no flexbox, no grid, no custom properties, no transitions. Phones get the
+   same page; the dark-mode block at the bottom is simply ignored by old engines. */
+* { -webkit-box-sizing: border-box; box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: Helvetica, Arial, sans-serif; font-size: 17px; line-height: 1.3;
+  background: #fff; color: #000; -webkit-text-size-adjust: 100%; }
+#top { border-bottom: 3px solid #000; padding: 10px 12px; overflow: hidden; }
+#top h1 { font-size: 22px; margin: 0 0 2px 0; }
+#status { font-size: 13px; }
+#bar { margin-top: 8px; }
+#main { padding: 4px 8px 40px 8px; max-width: 1100px; margin: 0 auto; }
+h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 1px; margin: 18px 4px 4px 4px;
+  border-bottom: 2px solid #000; padding-bottom: 3px; }
+.card { display: inline-block; vertical-align: top; width: 100%; padding: 4px; }
+.in { border: 2px solid #000; border-radius: 8px; padding: 10px; min-height: 96px; background: #fff; }
+.on .in { border-width: 4px; padding: 8px; }
+.off .name, .off .state { color: #444; }
+.gone .in { border-style: dashed; }
+.name { font-weight: bold; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.state { font-size: 15px; margin: 2px 0 8px 0; }
+.big { font-size: 30px; font-weight: bold; }
+.chip { display: inline-block; background: #000; color: #fff; border-radius: 4px; padding: 0 6px;
+  font-size: 13px; font-weight: bold; text-transform: uppercase; }
+.off .chip { background: #fff; color: #000; border: 1px solid #000; }
+button { font: inherit; font-size: 16px; font-weight: bold; background: #fff; color: #000;
+  border: 2px solid #000; border-radius: 6px; min-height: 46px; min-width: 52px; padding: 6px 12px;
+  margin: 0 6px 6px 0; cursor: pointer; -webkit-appearance: none; }
+button.sel { background: #000; color: #fff; }
+button.busy { border-style: dotted; }
+.row { margin-top: 2px; }
+.cam { width: 100%; margin-top: 6px; border: 1px solid #000; }
+.note { font-size: 14px; margin: 8px 4px; }
+#setup { padding: 16px; max-width: 640px; margin: 0 auto; }
+#setup textarea { width: 100%; height: 130px; font-size: 14px; border: 2px solid #000; padding: 6px; }
+.err { border: 2px solid #000; padding: 8px; margin: 8px 4px; font-weight: bold; }
+.cust .in { min-height: 0; }
+@media (min-width: 640px) { .card { width: 50%; } }
+@media (min-width: 1000px) { .card { width: 33.33%; } }
+@media (prefers-color-scheme: dark) {
+  body, .in, button { background: #14171a; color: #e8eaed; }
+  #top, h2, .in, button, .cam, .err, #setup textarea { border-color: #5f6b76; }
+  #setup textarea { background: #1d2226; color: #e8eaed; }
+  .in { background: #1d2226; }
+  button { background: #2a3138; }
+  .on .in { border-color: #f5b83d; }
+  .chip, button.sel { background: #f5b83d; color: #14171a; border-color: #f5b83d; }
+  .off .chip { background: #1d2226; color: #9aa5ae; border-color: #5f6b76; }
+  .off .name, .off .state { color: #9aa5ae; }
+}
+</style>
+</head>
+<body>
+<div id="top">
+  <h1>Home</h1>
+  <div id="status">Starting&hellip;</div>
+  <div id="bar"></div>
+</div>
+<div id="main"></div>
+<script>
+/* ES5 only, XMLHttpRequest only: this file must run unchanged on a Kobo. */
+(function () {
+  'use strict';
+
+  /* ---------- storage (falls back to memory if localStorage is blocked) ---------- */
+  var mem = {};
+  function load(k, d) {
+    try { var v = window.localStorage.getItem('hapanel.' + k); return v === null ? (k in mem ? mem[k] : d) : JSON.parse(v); }
+    catch (e) { return k in mem ? mem[k] : d; }
+  }
+  function save(k, v) {
+    mem[k] = v;
+    try { window.localStorage.setItem('hapanel.' + k, JSON.stringify(v)); } catch (e) {}
+  }
+
+  /* ---------- state ---------- */
+  var token = load('token', '');
+  var view = load('view', 'rooms');          // 'rooms' | 'types'
+  var shown = load('shown', {});             // entity_id -> true/false overrides
+  var isKobo = /Kobo|Kindle|E-?ink/i.test(navigator.userAgent);
+  var eink = load('eink', isKobo);
+  var states = [], byId = {}, areaOf = {}, haveAreas = false;
+  var nodes = {}, sigs = {}, layoutKey = '', mode = 'panel', timer = null, cams = {};
+
+  var main = document.getElementById('main');
+  var statusEl = document.getElementById('status');
+  var bar = document.getElementById('bar');
+
+  /* A token can arrive in the address (…/index.html#token=XXXX) so it never has
+     to be typed on an e-reader keyboard. It is stored, then removed from the bar. */
+  (function () {
+    var m = /[#&]token=([^&]+)/.exec(window.location.hash || '');
+    if (m) { token = decodeURIComponent(m[1]); save('token', token); window.location.hash = ''; }
+  })();
+
+  /* ---------- helpers ---------- */
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.appendChild(document.createTextNode(String(text)));
+    return e;
+  }
+  function btn(label, fn, cls) {
+    var b = el('button', cls || '', label);
+    b.onclick = function () { fn(b); return false; };
+    return b;
+  }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+  function domain(id) { return id.split('.')[0]; }
+  function nameOf(s) { return (s.attributes && s.attributes.friendly_name) || s.entity_id; }
+  function title(t) { t = String(t).replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); }
+  function num(v) { var n = parseFloat(v); return isNaN(n) ? null : n; }
+  function round(v, step) { var p = step < 1 ? 1 : 0; return Number(v).toFixed(p); }
+
+  function api(method, path, body, cb) {
+    var x = new XMLHttpRequest();
+    x.open(method, path, true);
+    x.setRequestHeader('Authorization', 'Bearer ' + token);
+    if (body !== null) x.setRequestHeader('Content-Type', 'application/json');
+    x.onreadystatechange = function () {
+      if (x.readyState !== 4) return;
+      cb(x.status, x.responseText);
+    };
+    x.send(body === null ? null : JSON.stringify(body));
+  }
+
+  function call(dom, service, data, b) {
+    if (b) b.className += ' busy';
+    api('POST', '/api/services/' + dom + '/' + service, data, function (st) {
+      if (st < 200 || st >= 300) setStatus('That did not go through (' + (st || 'no connection') + ').');
+      // Devices answer at their own pace; look once quickly and once after.
+      setTimeout(refresh, 500);
+      setTimeout(refresh, 2500);
+    });
+  }
+  function svc(dom, service, extra) {
+    return function (id) {
+      return function (b) {
+        var d = { entity_id: id }, k;
+        if (extra) for (k in extra) if (extra.hasOwnProperty(k)) d[k] = extra[k];
+        call(dom, service, d, b);
+      };
+    };
+  }
+
+  function setStatus(t) { clear(statusEl); statusEl.appendChild(document.createTextNode(t)); }
+
+  /* ---------- what is on the panel ---------- */
+  var ORDER = ['scene', 'script', 'light', 'switch', 'input_boolean', 'fan', 'climate', 'humidifier',
+    'water_heater', 'lock', 'cover', 'alarm_control_panel', 'media_player', 'remote', 'vacuum', 'camera',
+    'binary_sensor', 'sensor', 'input_number', 'number', 'input_select', 'select', 'button', 'input_button'];
+  var LABEL = { scene: 'Scenes', script: 'Scripts', light: 'Lights', 'switch': 'Switches & plugs',
+    input_boolean: 'Toggles', fan: 'Fans', climate: 'Climate', humidifier: 'Humidifiers',
+    water_heater: 'Water heater', lock: 'Locks', cover: 'Blinds & doors', alarm_control_panel: 'Alarm',
+    media_player: 'Media', remote: 'Remotes', vacuum: 'Vacuums', camera: 'Cameras', binary_sensor: 'Sensors',
+    sensor: 'Readings', input_number: 'Numbers', number: 'Numbers', input_select: 'Choices',
+    select: 'Choices', button: 'Buttons', input_button: 'Buttons' };
+  var ALWAYS = { scene: 1, light: 1, 'switch': 1, input_boolean: 1, fan: 1, climate: 1, humidifier: 1,
+    lock: 1, cover: 1, media_player: 1, remote: 1, vacuum: 1, camera: 1, alarm_control_panel: 1 };
+  var SENSOR_OK = { temperature: 1, humidity: 1 };
+  var BINARY_OK = { door: 1, window: 1, garage_door: 1, motion: 1, occupancy: 1, opening: 1,
+    smoke: 1, moisture: 1, gas: 1, carbon_monoxide: 1, lock: 1 };
+
+  function rank(d) { var i = ORDER.indexOf(d); return i < 0 ? 999 : i; }
+  function known(d) { return ORDER.indexOf(d) >= 0; }
+  function defaultShown(s) {
+    var d = domain(s.entity_id), dc = s.attributes.device_class;
+    if (ALWAYS[d]) return true;
+    if (d === 'sensor') return !!SENSOR_OK[dc];
+    if (d === 'binary_sensor') return !!BINARY_OK[dc];
+    return false;
+  }
+  function isShown(s) {
+    var o = shown[s.entity_id];
+    return o === true || o === false ? o : defaultShown(s);
+  }
+
+  /* ---------- cards ---------- */
+  function isOn(s) {
+    var d = domain(s.entity_id), v = s.state;
+    if (v === 'unavailable' || v === 'unknown') return false;
+    if (d === 'lock') return v === 'unlocked' || v === 'open';
+    if (d === 'cover') return v !== 'closed';
+    if (d === 'climate') return v !== 'off';
+    if (d === 'media_player') return v === 'playing' || v === 'paused' || v === 'on' || v === 'buffering';
+    if (d === 'vacuum') return v === 'cleaning' || v === 'returning';
+    if (d === 'alarm_control_panel') return v !== 'disarmed';
+    if (d === 'sensor' || d === 'scene' || d === 'script' || d === 'camera') return false;
+    return v === 'on' || v === 'open' || v === 'home';
+  }
+
+  var BINARY_WORDS = { door: ['Open', 'Closed'], window: ['Open', 'Closed'], garage_door: ['Open', 'Closed'],
+    opening: ['Open', 'Closed'], motion: ['Motion', 'Clear'], occupancy: ['Occupied', 'Clear'],
+    smoke: ['SMOKE', 'Clear'], moisture: ['WET', 'Dry'], gas: ['GAS', 'Clear'],
+    carbon_monoxide: ['CO DETECTED', 'Clear'], lock: ['Unlocked', 'Locked'] };
+
+  function buildCard(s) {
+    var id = s.entity_id, d = domain(id), a = s.attributes || {}, v = s.state;
+    var gone = v === 'unavailable';
+    var wrap = el('div', 'card ' + (gone ? 'gone off' : isOn(s) ? 'on' : 'off'));
+    var box = el('div', 'in');
+    wrap.appendChild(box);
+    box.appendChild(el('div', 'name', nameOf(s)));
+    var st = el('div', 'state');
+    box.appendChild(st);
+    var row = el('div', 'row');
+    function chip(t) { st.appendChild(el('span', 'chip', t)); }
+    function more(t) { st.appendChild(document.createTextNode(' ' + t)); }
+    function add(label, fn, sel) { row.appendChild(btn(label, fn, sel ? 'sel' : '')); }
+
+    if (gone) { chip('Offline'); return wrap; }
+
+    if (d === 'light' || d === 'switch' || d === 'input_boolean' || d === 'fan' || d === 'humidifier') {
+      chip(v === 'on' ? 'On' : 'Off');
+      if (d === 'light' && v === 'on' && a.brightness !== undefined && a.brightness !== null)
+        more(Math.round(a.brightness / 2.55) + '%');
+      if (d === 'fan' && v === 'on' && a.percentage !== undefined && a.percentage !== null) more(a.percentage + '%');
+      add(v === 'on' ? 'Turn off' : 'Turn on', svc('homeassistant', v === 'on' ? 'turn_off' : 'turn_on')(id));
+      var modes = a.supported_color_modes || [];
+      if (d === 'light' && !(modes.length === 1 && modes[0] === 'onoff') && modes.length) {
+        add('Dimmer', svc('light', 'turn_on', { brightness_step_pct: -20 })(id));
+        add('Brighter', svc('light', 'turn_on', { brightness_step_pct: 20 })(id));
+      }
+      if (d === 'fan' && a.percentage !== undefined && a.percentage !== null) {
+        add('Slower', svc('fan', 'decrease_speed')(id));
+        add('Faster', svc('fan', 'increase_speed')(id));
+      }
+    } else if (d === 'climate') {
+      var step = num(a.target_temp_step) || 0.5, cur = num(a.current_temperature);
+      var t = num(a.temperature), lo = num(a.target_temp_low), hi = num(a.target_temp_high);
+      chip(title(a.hvac_action || v));
+      if (cur !== null) more('Now ' + round(cur, step) + '°');
+      var big = el('div', 'big');
+      if (t !== null) {
+        big.appendChild(document.createTextNode(round(t, step) + '°'));
+        box.appendChild(big);
+        add('−', svc('climate', 'set_temperature', { temperature: t - step })(id));
+        add('+', svc('climate', 'set_temperature', { temperature: t + step })(id));
+      } else if (lo !== null && hi !== null) {
+        big.appendChild(document.createTextNode(round(lo, step) + '° – ' + round(hi, step) + '°'));
+        box.appendChild(big);
+        add('Low −', svc('climate', 'set_temperature', { target_temp_low: lo - step, target_temp_high: hi })(id));
+        add('Low +', svc('climate', 'set_temperature', { target_temp_low: lo + step, target_temp_high: hi })(id));
+        add('High −', svc('climate', 'set_temperature', { target_temp_low: lo, target_temp_high: hi - step })(id));
+        add('High +', svc('climate', 'set_temperature', { target_temp_low: lo, target_temp_high: hi + step })(id));
+      }
+      box.appendChild(row);
+      row = el('div', 'row');
+      var hm = a.hvac_modes || [], i;
+      for (i = 0; i < hm.length; i++)
+        add(title(hm[i]), svc('climate', 'set_hvac_mode', { hvac_mode: hm[i] })(id), hm[i] === v);
+    } else if (d === 'lock') {
+      chip(title(v));
+      if (v === 'locked') add('Unlock', function (b) {
+        if (window.confirm('Unlock ' + nameOf(s) + '?')) call('lock', 'unlock', { entity_id: id }, b);
+      });
+      else add('Lock', svc('lock', 'lock')(id));
+    } else if (d === 'cover') {
+      chip(title(v));
+      if (a.current_position !== undefined && a.current_position !== null) more(a.current_position + '% open');
+      add('Open', svc('cover', 'open_cover')(id));
+      add('Stop', svc('cover', 'stop_cover')(id));
+      add('Close', svc('cover', 'close_cover')(id));
+    } else if (d === 'media_player') {
+      chip(title(v));
+      if (a.media_title) more(a.media_title + (a.media_artist ? ' – ' + a.media_artist : ''));
+      if (a.app_name && !a.media_title) more(a.app_name);
+      // Only the controls this player says it supports (a bit mask); a player
+      // that reports nothing gets the full set.
+      var f = a.supported_features || 0, all = !f;
+      var can = function (bit) { return all || (f & bit) !== 0; };
+      if (v === 'off' || v === 'standby') { if (can(128)) add('Turn on', svc('media_player', 'turn_on')(id)); }
+      else {
+        if (can(1) || can(16384)) add(v === 'playing' ? 'Pause' : 'Play', svc('media_player', 'media_play_pause')(id));
+        if (can(1024) || can(4)) {
+          add('Vol −', svc('media_player', 'volume_down')(id));
+          add('Vol +', svc('media_player', 'volume_up')(id));
+        }
+        if (can(8)) add(a.is_volume_muted ? 'Unmute' : 'Mute',
+          svc('media_player', 'volume_mute', { is_volume_muted: !a.is_volume_muted })(id), !!a.is_volume_muted);
+        if (can(256)) add('Off', svc('media_player', 'turn_off')(id));
+        var sl = a.source_list || [], q;
+        if (!all && can(2048) && sl.length && sl.length <= 8) {
+          box.appendChild(row); row = el('div', 'row');
+          for (q = 0; q < sl.length; q++)
+            add(sl[q], svc('media_player', 'select_source', { source: sl[q] })(id), sl[q] === a.source);
+        }
+      }
+    } else if (d === 'remote') {
+      // Key names are the Android TV / Google TV ones.
+      chip(v === 'on' ? 'On' : 'Off');
+      if (a.current_activity) more(a.current_activity);
+      var key = function (label, k) { add(label, svc('remote', 'send_command', { command: k })(id)); };
+      add(v === 'on' ? 'Turn off' : 'Turn on', svc('remote', v === 'on' ? 'turn_off' : 'turn_on')(id));
+      key('Home', 'HOME'); key('Back', 'BACK');
+      box.appendChild(row); row = el('div', 'row');
+      key('Left', 'DPAD_LEFT'); key('Up', 'DPAD_UP'); key('OK', 'DPAD_CENTER'); key('Down', 'DPAD_DOWN'); key('Right', 'DPAD_RIGHT');
+      box.appendChild(row); row = el('div', 'row');
+      key('Vol −', 'VOLUME_DOWN'); key('Vol +', 'VOLUME_UP'); key('Mute', 'MUTE'); key('Play / Pause', 'MEDIA_PLAY_PAUSE');
+    } else if (d === 'vacuum') {
+      chip(title(v));
+      if (a.battery_level !== undefined) more('Battery ' + a.battery_level + '%');
+      add('Start', svc('vacuum', 'start')(id));
+      add('Pause', svc('vacuum', 'pause')(id));
+      add('Dock', svc('vacuum', 'return_to_base')(id));
+    } else if (d === 'scene' || d === 'script') {
+      st.appendChild(document.createTextNode(d === 'scene' ? 'Scene' : 'Script'));
+      add(d === 'scene' ? 'Activate' : 'Run', svc(d, 'turn_on')(id));
+    } else if (d === 'button' || d === 'input_button') {
+      add('Press', svc(d, 'press')(id));
+    } else if (d === 'input_number' || d === 'number') {
+      var ns = num(a.step) || 1, nv = num(v);
+      var bn = el('div', 'big', v + (a.unit_of_measurement ? ' ' + a.unit_of_measurement : ''));
+      box.appendChild(bn);
+      if (nv !== null) {
+        add('−', svc(d, 'set_value', { value: Math.max(num(a.min) === null ? -1e9 : num(a.min), nv - ns) })(id));
+        add('+', svc(d, 'set_value', { value: Math.min(num(a.max) === null ? 1e9 : num(a.max), nv + ns) })(id));
+      }
+    } else if (d === 'input_select' || d === 'select') {
+      var op = a.options || [], j;
+      if (op.length > 6) {
+        chip(v);
+        add('Previous', svc(d, 'select_previous')(id));
+        add('Next', svc(d, 'select_next')(id));
+      } else for (j = 0; j < op.length; j++)
+        add(op[j], svc(d, 'select_option', { option: op[j] })(id), op[j] === v);
+    } else if (d === 'alarm_control_panel') {
+      chip(title(v));
+    } else if (d === 'camera') {
+      st.appendChild(document.createTextNode(title(v)));
+      add(cams[id] ? 'Hide picture' : 'Show picture', function () {
+        cams[id] = !cams[id]; sigs[id] = ''; render();
+      });
+      box.appendChild(row);
+      row = el('div', 'row');
+      if (cams[id] && a.entity_picture) {
+        var im = el('img', 'cam');
+        im.src = a.entity_picture + (a.entity_picture.indexOf('?') < 0 ? '?' : '&') + 't=' + new Date().getTime();
+        im.alt = nameOf(s);
+        box.appendChild(im);
+      }
+    } else if (d === 'binary_sensor') {
+      var w = BINARY_WORDS[a.device_class] || ['On', 'Off'];
+      chip(v === 'on' ? w[0] : v === 'off' ? w[1] : title(v));
+    } else {
+      var val = el('div', 'big', v + (a.unit_of_measurement ? ' ' + a.unit_of_measurement : ''));
+      box.appendChild(val);
+    }
+    if (row.firstChild) box.appendChild(row);
+    return wrap;
+  }
+
+  /* ---------- drawing ---------- */
+  function byName(x, y) { var a = nameOf(x).toLowerCase(), b = nameOf(y).toLowerCase(); return a < b ? -1 : a > b ? 1 : 0; }
+
+  function sections() {
+    var groups = {}, names = [], i, s, key, out = [];
+    var useRooms = view === 'rooms' && haveAreas;
+    for (i = 0; i < states.length; i++) {
+      s = states[i];
+      if (!known(domain(s.entity_id)) || !isShown(s)) continue;
+      key = useRooms ? (areaOf[s.entity_id] || '￿Everything else') : LABEL[domain(s.entity_id)];
+      if (!groups[key]) { groups[key] = []; names.push(key); }
+      groups[key].push(s);
+    }
+    if (useRooms) names.sort();
+    else names.sort(function (a, b) {
+      return rank(domain(groups[a][0].entity_id)) - rank(domain(groups[b][0].entity_id));
+    });
+    for (i = 0; i < names.length; i++) {
+      groups[names[i]].sort(function (x, y) {
+        var r = rank(domain(x.entity_id)) - rank(domain(y.entity_id));
+        return r !== 0 ? r : byName(x, y);
+      });
+      out.push({ name: names[i].replace('￿', ''), items: groups[names[i]] });
+    }
+    return out;
+  }
+
+  function sig(s) { return s.state + JSON.stringify(s.attributes) + (cams[s.entity_id] ? '1' : ''); }
+
+  /* Only cards whose entity changed are touched, so an e-ink screen does not
+     flash the whole page on every poll. */
+  function render() {
+    if (mode !== 'panel') return;
+    var secs = sections(), key = view, i, j, s, sec, h, n;
+    for (i = 0; i < secs.length; i++) {
+      key += '|' + secs[i].name;
+      for (j = 0; j < secs[i].items.length; j++) key += ',' + secs[i].items[j].entity_id;
+    }
+    if (key !== layoutKey) {
+      layoutKey = key; nodes = {}; sigs = {}; clear(main);
+      if (!secs.length) main.appendChild(el('p', 'note',
+        states.length ? 'Nothing is switched on for this panel yet. Use Customize to choose what appears.'
+                      : 'Home Assistant has no devices yet. Add them under Settings → Devices & services.'));
+      for (i = 0; i < secs.length; i++) {
+        sec = secs[i];
+        main.appendChild(el('h2', '', sec.name));
+        h = el('div', 'sec');
+        for (j = 0; j < sec.items.length; j++) {
+          s = sec.items[j];
+          n = buildCard(s);
+          nodes[s.entity_id] = n; sigs[s.entity_id] = sig(s);
+          h.appendChild(n);
+        }
+        main.appendChild(h);
+      }
+      return;
+    }
+    for (i = 0; i < secs.length; i++) for (j = 0; j < secs[i].items.length; j++) {
+      s = secs[i].items[j];
+      if (sigs[s.entity_id] === sig(s)) continue;
+      n = buildCard(s);
+      nodes[s.entity_id].parentNode.replaceChild(n, nodes[s.entity_id]);
+      nodes[s.entity_id] = n; sigs[s.entity_id] = sig(s);
+    }
+  }
+
+  function drawBar() {
+    clear(bar);
+    if (!token) return;
+    if (mode === 'panel') {
+      if (haveAreas) bar.appendChild(btn(view === 'rooms' ? 'By type' : 'By room', function () {
+        view = view === 'rooms' ? 'types' : 'rooms'; save('view', view); drawBar(); render();
+      }));
+      bar.appendChild(btn('Refresh', function () { refresh(); }));
+      bar.appendChild(btn('Customize', function () { mode = 'custom'; drawBar(); drawCustom(); }));
+    } else {
+      bar.appendChild(btn('Done', function () { mode = 'panel'; layoutKey = ''; drawBar(); render(); schedule(); }));
+    }
+  }
+
+  /* ---------- customize ---------- */
+  function drawCustom() {
+    clear(main);
+    var list = states.slice(0), i, s, last = '', h;
+    main.appendChild(el('h2', '', 'This screen'));
+    main.appendChild(btn(eink ? 'E-ink mode: on' : 'E-ink mode: off', function () {
+      eink = !eink; save('eink', eink); drawCustom();
+    }, eink ? 'sel' : ''));
+    main.appendChild(btn('Forget access token', function () {
+      if (!window.confirm('Remove the saved token from this device?')) return;
+      token = ''; save('token', ''); mode = 'panel'; drawBar(); drawSetup();
+    }));
+    main.appendChild(el('p', 'note', 'E-ink mode checks for changes once a minute instead of every few seconds. ' +
+      'The choices below are remembered on this device only.'));
+    list.sort(function (x, y) {
+      var r = rank(domain(x.entity_id)) - rank(domain(y.entity_id));
+      return r !== 0 ? r : byName(x, y);
+    });
+    for (i = 0; i < list.length; i++) {
+      s = list[i];
+      if (!known(domain(s.entity_id))) continue;
+      if (LABEL[domain(s.entity_id)] !== last) {
+        last = LABEL[domain(s.entity_id)];
+        main.appendChild(el('h2', '', last));
+        h = el('div', 'sec cust');
+        main.appendChild(h);
+      }
+      h.appendChild(customRow(s));
+    }
+  }
+  function customRow(s) {
+    var on = isShown(s);
+    var wrap = el('div', 'card ' + (on ? 'on' : 'off')), box = el('div', 'in');
+    wrap.appendChild(box);
+    box.appendChild(el('div', 'name', nameOf(s)));
+    box.appendChild(el('div', 'state', s.entity_id));
+    box.appendChild(btn(on ? 'Shown' : 'Hidden', function () {
+      shown[s.entity_id] = !on; save('shown', shown);
+      wrap.parentNode.replaceChild(customRow(s), wrap);
+    }, on ? 'sel' : ''));
+    return wrap;
+  }
+
+  /* ---------- first run ---------- */
+  function drawSetup(msg) {
+    if (timer) { clearTimeout(timer); timer = null; }
+    clear(bar); clear(main); layoutKey = '';
+    setStatus('Not connected');
+    var box = el('div', ''); box.id = 'setup';
+    if (msg) box.appendChild(el('div', 'err', msg));
+    box.appendChild(el('p', '', 'Paste a Home Assistant long-lived access token. In Home Assistant: your ' +
+      'profile (bottom left) → Security → Long-lived access tokens → Create token.'));
+    var ta = el('textarea', '');
+    ta.setAttribute('autocapitalize', 'off'); ta.setAttribute('autocorrect', 'off'); ta.setAttribute('spellcheck', 'false');
+    box.appendChild(ta);
+    box.appendChild(el('p', '', ''));
+    box.appendChild(btn('Connect', function () {
+      var t = ta.value.replace(/\s+/g, '');
+      if (!t) return;
+      token = t; save('token', t); start();
+    }));
+    box.appendChild(el('p', 'note', 'The token is kept on this device only. On an e-reader, open this page as ' +
+      '…/local/panel/index.html#token=YOUR_TOKEN instead of typing it.'));
+    main.appendChild(box);
+  }
+
+  /* ---------- polling ---------- */
+  function loadAreas(done) {
+    // One line per room: "Kitchen|light.a,switch.b". Needs an administrator
+    // token; without one the panel simply groups by type.
+    var tpl = '{% for a in areas() %}{{ area_name(a) }}|{{ area_entities(a) | join(",") }}\n{% endfor %}';
+    api('POST', '/api/template', { template: tpl }, function (st, text) {
+      if (st === 200) {
+        var lines = text.split('\n'), i, j, p, ids, map = {}, any = false;
+        for (i = 0; i < lines.length; i++) {
+          p = lines[i].indexOf('|');
+          if (p < 1) continue;
+          ids = lines[i].slice(p + 1).split(',');
+          for (j = 0; j < ids.length; j++) if (ids[j]) { map[ids[j].replace(/\s/g, '')] = lines[i].slice(0, p).replace(/^\s+/, ''); any = true; }
+        }
+        areaOf = map; haveAreas = any;
+      }
+      done();
+    });
+  }
+
+  var tick = 0;
+  function refresh() {
+    if (!token) return;
+    api('GET', '/api/states', null, function (st, text) {
+      if (st === 401 || st === 403) { token = ''; save('token', ''); drawSetup('Home Assistant refused that token.'); return; }
+      if (st !== 200) { setStatus('Cannot reach Home Assistant – retrying'); return; }
+      try { states = JSON.parse(text); } catch (e) { return; }
+      byId = {};
+      for (var i = 0; i < states.length; i++) byId[states[i].entity_id] = states[i];
+      var now = new Date(), m = now.getMinutes();
+      setStatus('Updated ' + now.getHours() + ':' + (m < 10 ? '0' : '') + m);
+      render();
+    });
+  }
+  function schedule() {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(function () {
+      timer = null;
+      if (!token) return;
+      // Skip the work while the tab is in the background; rooms are re-read now and then.
+      if (!document.hidden && mode === 'panel') {
+        tick++;
+        if (tick % 20 === 0) loadAreas(function () { drawBar(); refresh(); });
+        else refresh();
+      }
+      schedule();
+    }, eink ? 60000 : 5000);
+  }
+  function start() {
+    mode = 'panel';
+    setStatus('Connecting…');
+    clear(main);
+    loadAreas(function () { drawBar(); refresh(); schedule(); });
+  }
+
+  if (document.addEventListener) document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && token && mode === 'panel') refresh();
+  }, false);
+
+  if (token) start(); else drawSetup();
+})();
+</script>
+</body>
+</html>
