@@ -434,6 +434,16 @@ a.btn.primary { color: var(--accent-ink); }
       <div class="device-list" id="devices"></div>
       <pre class="log hidden" id="installLog"></pre>
     </div>
+
+    <div class="card">
+      <h2 data-i18n="install.wifi_title"></h2>
+      <p class="hint" data-i18n-html="install.wifi_hint"></p>
+      <label class="field"><span data-i18n="install.wifi_folder"></span> <input id="publishDir" type="text" spellcheck="false"></label>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" id="publishBtn" data-i18n="install.wifi_send"></button>
+      </div>
+      <p class="hint" id="publishResult" style="margin:12px 0 0"></p>
+    </div>
   </div>
 </section>
 
@@ -1423,6 +1433,27 @@ async function install(path, withNickelMenu = false, nickelMenuPending = false) 
   }
 }
 
+// Publish the layout and the Kobo program into the folder Home Assistant
+// serves, for the Kobo to fetch over Wi-Fi.
+function suggestedPublishDir() {
+  try { return `\\\\${new URL(cfg.home_assistant.url).hostname}\\config\\www\\kobo-ha`; } catch { return ""; }
+}
+async function publishWifi() {
+  const out = $("publishResult");
+  out.style.color = "";
+  out.textContent = T("install.installing");
+  try {
+    await pushDraft(true);
+    const res = await api("/api/publish", { method: "POST", body: { dir: $("publishDir").value } });
+    cfg.updates = res.updates;
+    setDirty(false);
+    out.textContent = T(res.first ? "install.wifi_sent_first" : "install.wifi_sent");
+  } catch (e) {
+    out.style.color = "var(--err)";
+    out.textContent = e.message;
+  }
+}
+
 async function importFrom(path) {
   if (!confirm(T("install.import_confirm"))) return;
   try {
@@ -1466,6 +1497,8 @@ function bindAllFields() {
     ["batteryEntity", cfg.home_assistant.battery_entity || "sensor.kobo_battery"]]) {
     $(id).value = v ?? "";
   }
+  $("publishDir").value = (cfg.updates && cfg.updates.publish_dir) || suggestedPublishDir();
+  $("publishBtn").onclick = publishWifi;
   showBatteryOpts();
 }
 

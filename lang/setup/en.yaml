@@ -230,6 +230,12 @@ install:
   step3: "Press <b>Install</b> below, then eject the Kobo and restart it."
   step4: "Open the menu at the bottom right of the Kobo home screen and choose your dashboard."
   menu_name: "Name in the Kobo menu"
+  wifi_title: "Send over Wi-Fi"
+  wifi_hint: "After one USB install, later changes can reach the Kobo without a cable: your layout, and new versions of the dashboard itself. They are published into a folder that Home Assistant serves, normally <code>config/www/kobo-ha</code> (reach it with the Samba share add-on). Updates are signed with a key only this computer and your Kobo hold, and your Home Assistant token is never published."
+  wifi_folder: "Folder to publish into"
+  wifi_send: "Send over Wi-Fi"
+  wifi_sent: "Published. The Kobo takes it within a few minutes while the dashboard is open, or at once when you tap its refresh button."
+  wifi_sent_first: "Published, and an update key was created. Now install by USB once (above) so the Kobo receives the key; after that, Wi-Fi is enough."
   binary_missing: "The Kobo program was not found next to this setup tool, so installing is disabled. Download the complete release package (it contains a <code>kobo</code> folder)."
   devices: "Connected Kobo devices"
   rescan: "Rescan"
@@ -272,6 +278,7 @@ install:
 
 errors:
   save_failed: "Could not save: {error}"
+  publish_failed: "Could not publish: {error}"
   nm_failed: "Could not install NickelMenu: {error}"
   nm_other_pending: "Another update package (.kobo/KoboRoot.tgz, .kobo/Kobo.tgz) is already waiting on this Kobo. Eject it, let it restart, then try again."
   firmware_unsupported: "NickelMenu doesn't support firmware {version}, so the dashboard can't be started from the menu on this Kobo."

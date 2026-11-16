@@ -55,6 +55,56 @@ What a tap does on the Kobo:
 | Temperature or other sensor | Shown as a reading; not tappable |
 | Room | Switches its lights, switches and fans together. Never locks, TVs or heating |
 
+## Updates over Wi-Fi
+
+After one USB install, the Kobo can receive everything else without a cable:
+layout changes (pages, cards, the floorplan) and new versions of the
+dashboard program itself.
+
+**How it travels.** The setup tool publishes a bundle into a folder that Home
+Assistant serves, and the Kobo downloads it from there:
+
+```
+setup tool on the PC  ──writes──▶  Home Assistant  config/www/kobo-ha/
+                                              │  served as /local/kobo-ha/
+Kobo  ◀──────────── downloads over Wi-Fi ─────┘
+```
+
+**One-time setup**
+
+1. In Home Assistant, install the **Samba share** add-on so the PC can reach
+   the `config` folder. Create a `www` folder inside it if there is none and
+   restart Home Assistant once (it only starts serving `www` at boot).
+2. In the setup tool's **Install** step, under *Send over Wi-Fi*, check the
+   folder (it suggests `\\<home-assistant>\config\www\kobo-ha`; open that
+   address in File Explorer once so Windows signs in to the share) and click
+   **Send over Wi-Fi**. The first time, this creates an update key.
+3. Install by USB once more, so the Kobo receives that key.
+
+**From then on**: change anything in the setup tool and click **Send over
+Wi-Fi**. For a new version of the app, download the new package, run its
+setup tool and click the same button. The Kobo checks every five minutes
+while the dashboard is open, and immediately when you tap its refresh button;
+it then restarts the dashboard by itself to take the update up.
+
+**What keeps it safe**
+
+- Home Assistant serves that folder without a login, so the published layout
+  carries no secrets: the Home Assistant token and the update key are removed,
+  and the Kobo keeps its own. Anyone on your network can still read the
+  layout itself (page names, entity ids).
+- Every bundle is signed with the update key, which only the PC and the Kobo
+  hold. The Kobo ignores a bundle whose signature is wrong, any file that
+  does not match its signed hash, anything older than what it already has,
+  and any file name outside the four it expects.
+- A new program is only staged. The launcher checks that it runs before
+  switching to it, keeps the previous one, and puts the previous one back if
+  the new one stops within a minute of starting. A program that was rolled
+  back is not downloaded again.
+
+Still done by USB: the very first install, NickelMenu itself (and
+reinstalling it after a Kobo software update), and the name of the menu entry.
+
 ## What has been done so far
 
 1. Imported kobo-ha-dashboard 0.3.18 as the base (native e-ink drawing,
@@ -62,9 +112,11 @@ What a tap does on the Kobo:
 2. Added the **door lock** card with its two-tap unlock.
 3. Added the **TV remote** card for Android TV / Google TV.
 4. Added the **floorplan** card and its drag-and-drop editor in the setup tool.
-5. Translated the new text into all eleven languages the app ships with.
-6. Added automated tests for each new card (81 tests in total pass).
-7. Set the build to produce the Kobo program and the Windows and Linux setup
+5. Added **updates over Wi-Fi** for the layout and the program, signed, with
+   automatic rollback of a program that fails to start.
+6. Translated the new text into all eleven languages the app ships with.
+7. Added automated tests for every addition (87 tests in total pass).
+8. Set the build to produce the Kobo program and the Windows and Linux setup
    tools on every push to the `kobo-dashboard` branch.
 
 ### Not yet verified
@@ -74,6 +126,10 @@ What a tap does on the Kobo:
   in a desktop browser.
 - The lock, remote and floorplan cards have not been used against a real Home
   Assistant; they were tested with simulated devices.
+- Updates over Wi-Fi were tested on a computer: a real download over HTTP, the
+  signature and hash checks, and the launcher's swap and rollback run with
+  stand-in programs. They have not been tried on a Kobo, on the Kobo's own
+  shell, or through a real Home Assistant and Samba share.
 
 ## Install (Windows PC + Kobo)
 

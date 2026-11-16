@@ -226,6 +226,12 @@ install:
   step3: "Klicke unten auf <b>Installieren</b>, wirf den Kobo dann aus und starte ihn neu."
   step4: "Öffne das Menü unten rechts auf dem Kobo-Startbildschirm und wähle dein Dashboard."
   menu_name: "Name im Kobo-Menü"
+  wifi_title: "Per WLAN senden"
+  wifi_hint: "Nach einer Installation per USB können spätere Änderungen den Kobo ohne Kabel erreichen: dein Layout und neue Versionen des Dashboards selbst. Sie werden in einen Ordner veröffentlicht, den Home Assistant bereitstellt, normalerweise <code>config/www/kobo-ha</code> (erreichbar mit dem Add-on Samba share). Updates werden mit einem Schlüssel signiert, den nur dieser Computer und dein Kobo kennen; dein Home-Assistant-Token wird nie veröffentlicht."
+  wifi_folder: "Ordner für die Veröffentlichung"
+  wifi_send: "Per WLAN senden"
+  wifi_sent: "Veröffentlicht. Der Kobo übernimmt es innerhalb weniger Minuten, solange das Dashboard geöffnet ist, oder sofort, wenn du auf Aktualisieren tippst."
+  wifi_sent_first: "Veröffentlicht, und ein Update-Schlüssel wurde erstellt. Installiere jetzt einmal per USB (oben), damit der Kobo den Schlüssel erhält; danach genügt WLAN."
   binary_missing: "Das Kobo-Programm wurde neben diesem Einrichtungswerkzeug nicht gefunden, daher ist die Installation deaktiviert. Lade das vollständige Release-Paket herunter (es enthält einen Ordner <code>kobo</code>)."
   devices: "Angeschlossene Kobo-Geräte"
   rescan: "Erneut suchen"
@@ -268,6 +274,7 @@ install:
 
 errors:
   save_failed: "Speichern fehlgeschlagen: {error}"
+  publish_failed: "Veröffentlichen fehlgeschlagen: {error}"
   nm_failed: "NickelMenu konnte nicht installiert werden: {error}"
   nm_other_pending: "Auf diesem Kobo wartet bereits ein anderes Update-Paket (.kobo/KoboRoot.tgz, .kobo/Kobo.tgz). Wirf ihn aus, lass ihn neu starten und versuche es dann erneut."
   firmware_unsupported: "NickelMenu unterstützt die Firmware {version} nicht, daher kann das Dashboard auf diesem Kobo nicht über das Menü gestartet werden."

@@ -226,6 +226,12 @@ install:
   step3: "下の <b>インストール</b> を押し、Kobo を取り外して再起動します。"
   step4: "Kobo のホーム画面右下のメニューを開き、ダッシュボードを選びます。"
   menu_name: "Kobo メニューでの名前"
+  wifi_title: "Wi-Fiで送信"
+  wifi_hint: "一度USBでインストールすれば、以降の変更（レイアウトやダッシュボード本体の新しいバージョン）はケーブルなしでKoboに届きます。Home Assistantが配信するフォルダー（通常は <code>config/www/kobo-ha</code>、Samba shareアドオンでアクセス）に公開されます。更新はこのコンピューターとKoboだけが持つ鍵で署名され、Home Assistantのトークンが公開されることはありません。"
+  wifi_folder: "公開先フォルダー"
+  wifi_send: "Wi-Fiで送信"
+  wifi_sent: "公開しました。ダッシュボードを開いている間、Koboは数分以内に取得します。更新ボタンをタップするとすぐに取得します。"
+  wifi_sent_first: "公開し、更新用の鍵を作成しました。Koboが鍵を受け取れるよう、上で一度USBインストールしてください。以降はWi-Fiだけで済みます。"
   binary_missing: "このセットアップツールと同じ場所に Kobo 用プログラムが見つからないため、インストールできません。完全なリリースパッケージ（<code>kobo</code> フォルダーを含む）をダウンロードしてください。"
   devices: "接続中の Kobo"
   rescan: "再検索"
@@ -268,6 +274,7 @@ install:
 
 errors:
   save_failed: "保存できませんでした: {error}"
+  publish_failed: "公開できませんでした: {error}"
   nm_failed: "NickelMenu をインストールできませんでした: {error}"
   nm_other_pending: "この Kobo には別のアップデートパッケージ（.kobo/KoboRoot.tgz, .kobo/Kobo.tgz）がすでに待機しています。取り外して再起動させてから、もう一度お試しください。"
   firmware_unsupported: "NickelMenu はファームウェア {version} に対応していないため、この Kobo ではメニューからダッシュボードを起動できません。"

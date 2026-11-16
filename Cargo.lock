@@ -879,7 +879,7 @@ dependencies = [
 
 [[package]]
 name = "kobo-ha-dashboard"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "ab_glyph",
  "async-trait",
@@ -888,6 +888,7 @@ dependencies = [
  "clap",
  "fontdue",
  "futures-util",
+ "getrandom 0.2.17",
  "image",
  "libc",
  "reqwest",

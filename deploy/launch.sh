@@ -180,9 +180,49 @@ PAUSED=1
 echo "Nickel paused"
 
 cd "$APP_DIR" || exit 1
-RUST_LOG="${RUST_LOG:-kobo_ha_dashboard=info}" "$BINARY" --device --config "$CONFIG"
-STATUS=$?
-echo "Dashboard exited with status $STATUS"
+
+# Updates over Wi-Fi. The dashboard downloads and verifies a new program as
+# $BINARY.new and exits with status 75 to be started again; a new layout
+# asks for the same restart. The new program is swapped in here, and swapped
+# back out if it cannot run or dies within a minute of starting, so a bad
+# update never leaves the Kobo without a working dashboard.
+RESTART_STATUS=75
+TRIED_NEW=""
+while :; do
+    if [ -f "$BINARY.new" ]; then
+        chmod +x "$BINARY.new" 2>/dev/null
+        if "$BINARY.new" --version >/dev/null 2>&1; then
+            cp -f "$BINARY" "$BINARY.old" && mv -f "$BINARY.new" "$BINARY" && TRIED_NEW=1
+            echo "Update: new program in place ($("$BINARY" --version 2>/dev/null))"
+        else
+            echo "Update: the new program does not run here; keeping the current one"
+            rm -f "$BINARY.new"
+            touch "$APP_DIR/update-rolled-back"
+        fi
+        sync
+    fi
+
+    STARTED="$(date +%s)"
+    RUST_LOG="${RUST_LOG:-kobo_ha_dashboard=info}" "$BINARY" --device --config "$CONFIG"
+    STATUS=$?
+    RAN=$(( $(date +%s) - STARTED ))
+    echo "Dashboard exited with status $STATUS after ${RAN}s"
+
+    if [ "$STATUS" -eq "$RESTART_STATUS" ]; then
+        # It ran and asked for this itself, so the program is sound.
+        TRIED_NEW=""
+        continue
+    fi
+    if [ -n "$TRIED_NEW" ] && [ "$STATUS" -ne 0 ] && [ "$RAN" -lt 60 ] && [ -f "$BINARY.old" ]; then
+        echo "Update: the new program failed at once; putting the previous one back"
+        mv -f "$BINARY.old" "$BINARY"
+        touch "$APP_DIR/update-rolled-back"
+        TRIED_NEW=""
+        sync
+        continue
+    fi
+    break
+done
 [ "$STATUS" -eq 0 ] && CLEAN_EXIT=1
 
 exit 0

@@ -226,6 +226,12 @@ install:
   step3: "Clique em <b>Instalar</b> abaixo, depois ejete o Kobo e reinicie-o."
   step4: "Abra o menu no canto inferior direito da tela inicial do Kobo e escolha seu painel."
   menu_name: "Nome no menu do Kobo"
+  wifi_title: "Enviar por Wi-Fi"
+  wifi_hint: "Depois de uma instalação por USB, as alterações seguintes podem chegar ao Kobo sem cabo: o seu esquema e novas versões do próprio painel. São publicadas numa pasta servida pelo Home Assistant, normalmente <code>config/www/kobo-ha</code> (aceda com o add-on Samba share). As atualizações são assinadas com uma chave que só este computador e o seu Kobo têm, e o seu token do Home Assistant nunca é publicado."
+  wifi_folder: "Pasta onde publicar"
+  wifi_send: "Enviar por Wi-Fi"
+  wifi_sent: "Publicado. O Kobo recebe-o em poucos minutos enquanto o painel está aberto, ou de imediato se tocar no botão de atualizar."
+  wifi_sent_first: "Publicado, e foi criada uma chave de atualização. Instale agora uma vez por USB (acima) para o Kobo receber a chave; depois, o Wi-Fi chega."
   binary_missing: "O programa do Kobo não foi encontrado junto a esta ferramenta, então a instalação está desativada. Baixe o pacote completo (ele contém uma pasta <code>kobo</code>)."
   devices: "Dispositivos Kobo conectados"
   rescan: "Procurar novamente"
@@ -268,6 +274,7 @@ install:
 
 errors:
   save_failed: "Não foi possível salvar: {error}"
+  publish_failed: "Não foi possível publicar: {error}"
   nm_failed: "Não foi possível instalar o NickelMenu: {error}"
   nm_other_pending: "Já existe outro pacote de atualização (.kobo/KoboRoot.tgz, .kobo/Kobo.tgz) aguardando neste Kobo. Ejete-o, deixe-o reiniciar e tente novamente."
   firmware_unsupported: "O NickelMenu não é compatível com o firmware {version}, então o painel não pode ser aberto pelo menu neste Kobo."

@@ -12,6 +12,7 @@ mod power;
 mod setup;
 mod simulator;
 mod ui;
+mod update;
 
 use clap::{Parser, Subcommand};
 use config::AppConfig;
@@ -182,7 +183,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 
     #[cfg(unix)]
-    return run_device(config, ha_client, args.once).await;
+    return run_device(config, ha_client, args.once, config_dir).await;
     #[cfg(not(unix))]
     return Err("Device mode is only available on the Kobo".into());
 }
@@ -192,6 +193,7 @@ async fn run_device(
     config: AppConfig,
     ha_client: HaClient,
     once: bool,
+    app_dir: PathBuf,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing::info!("Starting on Kobo e-reader device");
     let probed = display::framebuffer::probe_resolution(&config.device.fb_device);
@@ -276,6 +278,46 @@ async fn run_device(
     // pixels count, so an unchanged screen never triggers a full flash.
     let mut partials: u32 = 0;
     let mut last_tap = Instant::now() - TAP_DEBOUNCE;
+
+    // Updates over Wi-Fi: a background task looks for a newer signed bundle
+    // and, once one is in place, asks for a restart to take it up.
+    update::note_rollback(&app_dir);
+    let mut restart_for_update = false;
+    let (update_tx, mut update_rx) = tokio::sync::mpsc::channel::<()>(1);
+    let _update_tx_open = update_tx.clone();
+    let update_now = std::sync::Arc::new(tokio::sync::Notify::new());
+    if update::active(&config) {
+        let (cfg, dir, kick) = (config.clone(), app_dir.clone(), update_now.clone());
+        tracing::info!("Updates over Wi-Fi: {}", update::base_url(&cfg));
+        tokio::spawn(async move {
+            let every = Duration::from_secs(match cfg.updates.check_interval_secs {
+                0 => 300,
+                n => n.max(60),
+            });
+            let mut last_error = String::new();
+            // Wi-Fi and Home Assistant come first.
+            tokio::time::sleep(Duration::from_secs(20)).await;
+            loop {
+                match update::check(&cfg, &dir).await {
+                    Ok(true) => {
+                        let _ = update_tx.send(()).await;
+                        return;
+                    }
+                    Ok(false) => last_error.clear(),
+                    // Said once, not every five minutes
+                    Err(e) if e != last_error => {
+                        tracing::warn!("Update check: {}", e);
+                        last_error = e;
+                    }
+                    Err(_) => {}
+                }
+                tokio::select! {
+                    _ = tokio::time::sleep(every) => {}
+                    _ = kick.notified() => {}
+                }
+            }
+        });
+    }
     let mut unlock_armed: Option<(String, Instant)> = None;
     let mut flush = |fb: &mut Box<dyn display::FramebufferDriver>, canvas: &Canvas, force_full: bool| {
         let cycles = config.device.full_refresh_cycles;
@@ -734,6 +776,8 @@ async fn run_device(
                     }
                     UiAction::Refresh => {
                         force_full = true;
+                        // The refresh button also looks for an update now.
+                        update_now.notify_one();
                         let ha = ha_client.clone();
                         let tx = wake_tx.clone();
                         tokio::spawn(async move {
@@ -830,6 +874,11 @@ async fn run_device(
                 flush(&mut fb, &canvas, false);
             }
 
+            Some(()) = update_rx.recv() => {
+                tracing::info!("Update in place: restarting to take it up");
+                restart_for_update = true;
+                break;
+            }
             _ = recv_signal(&mut sigterm) => { tracing::info!("SIGTERM received"); break; }
             _ = recv_signal(&mut sigint) => { tracing::info!("SIGINT received"); break; }
             _ = recv_signal(&mut sighup) => { tracing::info!("SIGHUP received"); break; }
@@ -854,7 +903,7 @@ async fn run_device(
     drop(fb);
     tracing::info!("Dashboard exited cleanly");
     // Don't wait for in-flight HTTP requests or blocked input threads.
-    std::process::exit(0);
+    std::process::exit(if restart_for_update { update::EXIT_RESTART } else { 0 });
 }
 
 /// Bring Wi-Fi back without holding up the screen, then fetch fresh states.

@@ -96,6 +96,7 @@ pub async fn start_setup_server(
         .route("/api/icon.png", get(icon_png))
         .route("/api/kobo", get(list_kobos))
         .route("/api/kobo/install", post(install_kobo))
+        .route("/api/publish", post(publish_update))
         .route("/api/kobo/import", post(import_kobo))
         .route("/api/kobo/nickelmenu", post(install_nickelmenu))
         .route("/api/fonts/ensure", post(ensure_font))
@@ -453,6 +454,47 @@ async fn install_kobo(State(s): State<Shared>, Json(req): Json<InstallRequest>) 
             Json(serde_json::json!({ "log": log })).into_response()
         }
         Err(e) => bad_request_key("install_failed", &e, serde_json::json!({ "error": e })),
+    }
+}
+
+#[derive(Deserialize)]
+struct PublishRequest {
+    dir: String,
+}
+
+/// Publish a signed update bundle (layout, Kobo program, launcher scripts)
+/// into the folder Home Assistant serves, for the Kobo to fetch over Wi-Fi.
+async fn publish_update(State(s): State<Shared>, Json(req): Json<PublishRequest>) -> Response {
+    let Some(binary) = s.kobo_binary.clone() else {
+        return bad_request_key("binary_missing", "The Kobo program was not found next to the setup tool.", serde_json::json!({}));
+    };
+    let failed = |e: String| bad_request_key("publish_failed", &e, serde_json::json!({ "error": e }));
+    let dir = req.dir.trim().to_string();
+    if dir.is_empty() {
+        return failed("no folder given".to_string());
+    }
+    // The first publish creates the key that signs every later one.
+    let first = {
+        let mut draft = s.draft.write().await;
+        let first = draft.updates.key.is_empty();
+        if first {
+            match crate::update::new_key() {
+                Ok(key) => draft.updates.key = key,
+                Err(e) => return failed(e),
+            }
+        }
+        draft.updates.enabled = true;
+        draft.updates.publish_dir = dir.clone();
+        first
+    };
+    if let Err(e) = write_draft(&s).await {
+        return bad_request_key("save_failed", &e, serde_json::json!({ "error": e }));
+    }
+    let config = s.draft.read().await.clone();
+    let serial = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0);
+    match crate::update::publish(Path::new(&dir), &config, &binary, kobo::LAUNCH_SH, kobo::WIFI_SH, serial) {
+        Ok(m) => Json(serde_json::json!({ "updates": config.updates, "first": first, "serial": m.serial, "url": crate::update::base_url(&config) })).into_response(),
+        Err(e) => failed(e),
     }
 }
 

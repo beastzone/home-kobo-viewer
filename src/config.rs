@@ -16,6 +16,31 @@ pub struct AppConfig {
     pub theme: ThemeConfig,
     #[serde(default)]
     pub pages: Vec<PageConfig>,
+    #[serde(default)]
+    pub updates: UpdatesConfig,
+}
+
+/// Updates over Wi-Fi (see `update.rs`)
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct UpdatesConfig {
+    /// The Kobo looks for updates under Home Assistant's /local/kobo-ha/
+    #[serde(default)]
+    pub enabled: bool,
+    /// Shared secret that signs every update. Reaches the Kobo over USB and
+    /// is never published.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub key: String,
+    /// On the computer: the folder updates are published into, normally
+    /// Home Assistant's `config/www/kobo-ha`
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub publish_dir: String,
+    /// How often the Kobo looks, in seconds (0 = the default)
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub check_interval_secs: u64,
+}
+
+fn is_zero(n: &u64) -> bool {
+    *n == 0
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -505,6 +530,7 @@ impl Default for AppConfig {
             home_assistant: HomeAssistantConfig::default(),
             theme: ThemeConfig::default(),
             pages: default_demo_pages(),
+            updates: UpdatesConfig::default(),
         }
     }
 }

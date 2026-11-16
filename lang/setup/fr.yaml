@@ -226,6 +226,12 @@ install:
   step3: "Cliquez sur <b>Installer</b> ci-dessous, puis éjectez la Kobo et redémarrez-la."
   step4: "Ouvrez le menu en bas à droite de l'écran d'accueil de la Kobo et choisissez votre tableau de bord."
   menu_name: "Nom dans le menu de la Kobo"
+  wifi_title: "Envoyer par Wi-Fi"
+  wifi_hint: "Après une installation par USB, les changements suivants peuvent atteindre la Kobo sans câble : votre mise en page et les nouvelles versions du tableau de bord lui-même. Ils sont publiés dans un dossier servi par Home Assistant, normalement <code>config/www/kobo-ha</code> (accessible avec le module Samba share). Les mises à jour sont signées avec une clé que seuls cet ordinateur et votre Kobo détiennent, et votre jeton Home Assistant n'est jamais publié."
+  wifi_folder: "Dossier de publication"
+  wifi_send: "Envoyer par Wi-Fi"
+  wifi_sent: "Publié. La Kobo le récupère en quelques minutes tant que le tableau de bord est ouvert, ou tout de suite si vous touchez son bouton d'actualisation."
+  wifi_sent_first: "Publié, et une clé de mise à jour a été créée. Installez maintenant une fois par USB (ci-dessus) pour que la Kobo reçoive la clé ; ensuite, le Wi-Fi suffit."
   binary_missing: "Le programme Kobo est introuvable à côté de cet outil ; l'installation est désactivée. Téléchargez le paquet complet (il contient un dossier <code>kobo</code>)."
   devices: "Kobo connectées"
   rescan: "Rechercher à nouveau"
@@ -268,6 +274,7 @@ install:
 
 errors:
   save_failed: "Impossible d'enregistrer : {error}"
+  publish_failed: "Publication impossible : {error}"
   nm_failed: "Impossible d'installer NickelMenu : {error}"
   nm_other_pending: "Un autre paquet de mise à jour (.kobo/KoboRoot.tgz, .kobo/Kobo.tgz) attend déjà sur cette Kobo. Éjectez-la, laissez-la redémarrer, puis réessayez."
   firmware_unsupported: "NickelMenu ne prend pas en charge le micrologiciel {version} : le tableau de bord ne peut pas être lancé depuis le menu sur cette Kobo."

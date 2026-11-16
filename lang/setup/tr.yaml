@@ -226,6 +226,12 @@ install:
   step3: "Aşağıdaki <b>Kur</b> butonuna basın, ardından Kobo'yu çıkarıp yeniden başlatın."
   step4: "Kobo ana ekranının sağ altındaki menüyü açın ve panelinizi seçin."
   menu_name: "Kobo menüsündeki adı"
+  wifi_title: "Wi-Fi ile gönder"
+  wifi_hint: "Bir kez USB ile kurduktan sonra, sonraki değişiklikler Kobo'ya kablosuz ulaşabilir: düzeniniz ve panonun yeni sürümleri. Bunlar Home Assistant'ın sunduğu bir klasöre yayımlanır, genellikle <code>config/www/kobo-ha</code> (Samba share eklentisiyle erişin). Güncellemeler yalnızca bu bilgisayarın ve Kobo'nuzun bildiği bir anahtarla imzalanır; Home Assistant belirteciniz asla yayımlanmaz."
+  wifi_folder: "Yayımlanacak klasör"
+  wifi_send: "Wi-Fi ile gönder"
+  wifi_sent: "Yayımlandı. Pano açıkken Kobo birkaç dakika içinde alır; yenile düğmesine dokunursanız hemen alır."
+  wifi_sent_first: "Yayımlandı ve bir güncelleme anahtarı oluşturuldu. Kobo'nun anahtarı alması için şimdi bir kez USB ile kurun (yukarıda); sonrasında Wi-Fi yeterlidir."
   binary_missing: "Kobo programı bu kurulum aracının yanında bulunamadı, bu yüzden kurulum devre dışı. Tam sürüm paketini indirin (içinde bir <code>kobo</code> klasörü vardır)."
   devices: "Bağlı Kobo cihazları"
   rescan: "Yeniden tara"
@@ -268,6 +274,7 @@ install:
 
 errors:
   save_failed: "Kaydedilemedi: {error}"
+  publish_failed: "Yayımlanamadı: {error}"
   nm_failed: "NickelMenu kurulamadı: {error}"
   nm_other_pending: "Bu Kobo'da zaten bekleyen başka bir güncelleme paketi (.kobo/KoboRoot.tgz, .kobo/Kobo.tgz) var. Kobo'yu çıkarın, yeniden başlamasını bekleyin, sonra tekrar deneyin."
   firmware_unsupported: "NickelMenu {version} yazılım sürümünü desteklemiyor; bu Kobo'da panel menüden başlatılamaz."

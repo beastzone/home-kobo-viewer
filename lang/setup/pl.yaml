@@ -226,6 +226,12 @@ install:
   step3: "Kliknij <b>Zainstaluj</b> poniżej, a następnie wysuń Kobo i uruchom je ponownie."
   step4: "Otwórz menu w prawym dolnym rogu ekranu głównego Kobo i wybierz swój panel."
   menu_name: "Nazwa w menu Kobo"
+  wifi_title: "Wyślij przez Wi-Fi"
+  wifi_hint: "Po jednej instalacji przez USB kolejne zmiany mogą trafiać na Kobo bez kabla: układ oraz nowe wersje samego panelu. Są publikowane w folderze udostępnianym przez Home Assistant, zwykle <code>config/www/kobo-ha</code> (dostęp przez dodatek Samba share). Aktualizacje są podpisywane kluczem, który mają tylko ten komputer i Twoje Kobo, a token Home Assistant nigdy nie jest publikowany."
+  wifi_folder: "Folder publikacji"
+  wifi_send: "Wyślij przez Wi-Fi"
+  wifi_sent: "Opublikowano. Kobo pobierze to w ciągu kilku minut, gdy panel jest otwarty, albo od razu po dotknięciu przycisku odświeżania."
+  wifi_sent_first: "Opublikowano i utworzono klucz aktualizacji. Teraz zainstaluj raz przez USB (powyżej), aby Kobo otrzymało klucz; potem wystarczy Wi-Fi."
   binary_missing: "Nie znaleziono programu dla Kobo obok tego narzędzia, więc instalacja jest wyłączona. Pobierz pełny pakiet wydania (zawiera folder <code>kobo</code>)."
   devices: "Podłączone urządzenia Kobo"
   rescan: "Szukaj ponownie"
@@ -268,6 +274,7 @@ install:
 
 errors:
   save_failed: "Nie udało się zapisać: {error}"
+  publish_failed: "Nie udało się opublikować: {error}"
   nm_failed: "Nie udało się zainstalować NickelMenu: {error}"
   nm_other_pending: "Na tym Kobo czeka już inny pakiet aktualizacji (.kobo/KoboRoot.tgz, .kobo/Kobo.tgz). Wysuń je, pozwól mu się uruchomić ponownie i spróbuj jeszcze raz."
   firmware_unsupported: "NickelMenu nie obsługuje oprogramowania {version}, więc na tym Kobo panelu nie da się uruchomić z menu."
