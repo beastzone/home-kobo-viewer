@@ -1,9 +1,12 @@
 name: Release
 
 # Push a tag like v0.2.0 to build every package and publish a GitHub release.
+# Pushes to the working branch build the same packages and keep them as
+# downloadable artifacts of the run, without publishing a release.
 on:
   push:
     tags: ["v*"]
+    branches: [kobo-dashboard]
   workflow_dispatch:
 
 permissions:
