@@ -203,6 +203,7 @@ card_types:
   scene: "Bouton unique"
 
 preview:
+  click_hint: "Cliquez sur l'aperçu pour l'utiliser comme la Kobo. Les changements d'appareils sont simulés ; rien n'est envoyé chez vous."
   sleep: "Afficher l'écran de veille"
   grayscale: "Afficher en niveaux de gris"
   refresh: "Actualiser"

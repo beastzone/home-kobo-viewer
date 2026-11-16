@@ -203,6 +203,7 @@ card_types:
   scene: "Botón único"
 
 preview:
+  click_hint: "Haz clic en la vista previa para usarla como el Kobo. Los cambios en los dispositivos son simulados; no se envía nada a tu casa."
   sleep: "Mostrar la pantalla de reposo"
   grayscale: "Mostrar en escala de grises"
   refresh: "Actualizar"

@@ -207,6 +207,7 @@ card_types:
   scene: "Single button"
 
 preview:
+  click_hint: "Click the preview to use it like the Kobo. Device changes are simulated; nothing is sent to your home."
   sleep: "Show the sleep screen"
   grayscale: "Show in grayscale"
   refresh: "Refresh"

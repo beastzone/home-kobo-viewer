@@ -203,6 +203,7 @@ card_types:
   scene: "单个按钮"
 
 preview:
+  click_hint: "点击预览即可像操作 Kobo 一样使用。设备变化仅为模拟，不会向你的家发送任何指令。"
   sleep: "显示睡眠画面"
   grayscale: "以灰度显示"
   refresh: "刷新"

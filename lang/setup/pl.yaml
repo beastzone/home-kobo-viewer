@@ -203,6 +203,7 @@ card_types:
   scene: "Pojedynczy przycisk"
 
 preview:
+  click_hint: "Kliknij podgląd, aby używać go jak Kobo. Zmiany urządzeń są symulowane; nic nie jest wysyłane do Twojego domu."
   sleep: "Pokaż ekran uśpienia"
   grayscale: "Pokaż w skali szarości"
   refresh: "Odśwież"

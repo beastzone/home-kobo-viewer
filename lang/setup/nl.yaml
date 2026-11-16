@@ -203,6 +203,7 @@ card_types:
   scene: "Losse knop"
 
 preview:
+  click_hint: "Klik op het voorbeeld om het als de Kobo te bedienen. Apparaatwijzigingen worden gesimuleerd; er wordt niets naar je huis gestuurd."
   sleep: "Slaapscherm tonen"
   grayscale: "In grijstinten tonen"
   refresh: "Vernieuwen"

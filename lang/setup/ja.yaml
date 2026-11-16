@@ -203,6 +203,7 @@ card_types:
   scene: "単独ボタン"
 
 preview:
+  click_hint: "プレビューをクリックするとKoboのように操作できます。デバイスの変化はシミュレーションで、家には何も送信されません。"
   sleep: "スリープ画面を表示"
   grayscale: "グレースケールで表示"
   refresh: "更新"

@@ -49,6 +49,8 @@ struct Inner {
     loaded_font: Mutex<Option<String>>,
     /// Fired by the "Quit" button to stop the server.
     shutdown: tokio::sync::Notify,
+    /// The preview as a device being tapped
+    preview_view: Mutex<PreviewView>,
     /// Port of the setup page; the update server takes the next one.
     port: u16,
     /// Port of the running update server, once it has been started
@@ -85,6 +87,7 @@ pub async fn start_setup_server(
         render_lock: Mutex::new(()),
         loaded_font: Mutex::new(None),
         shutdown: tokio::sync::Notify::new(),
+        preview_view: Mutex::new(PreviewView::default()),
         port,
         update_server: Mutex::new(None),
         fetched_serial: Arc::new(std::sync::atomic::AtomicU64::new(0)),
@@ -109,6 +112,7 @@ pub async fn start_setup_server(
         .route("/api/ha/entities", get(get_entities))
         .route("/api/generate", post(generate_pages))
         .route("/api/preview.png", get(preview))
+        .route("/api/preview/tap", post(preview_tap))
         .route("/api/icon.png", get(icon_png))
         .route("/api/kobo", get(list_kobos))
         .route("/api/kobo/install", post(install_kobo))
@@ -383,12 +387,161 @@ struct PreviewQuery {
     sleep: bool,
 }
 
+/// How long a lock tapped in the preview waits for its confirming tap, as on the Kobo
+const PREVIEW_UNLOCK_CONFIRM: std::time::Duration = std::time::Duration::from_secs(6);
+
+/// What the preview's screen shows beyond the chosen page, so that it can be
+/// clicked through like the Kobo is tapped through.
+#[derive(Default)]
+struct PreviewView {
+    weather_detail: Option<(String, String)>,
+    unlock_armed: Option<(String, std::time::Instant)>,
+    frontlight_off: bool,
+    /// States changed by clicks, laid over the real ones. Nothing clicked in
+    /// the preview is sent to Home Assistant: a click on the front door lock
+    /// must not unlock the front door.
+    changed: std::collections::HashMap<String, crate::ha::models::EntityState>,
+}
+
+impl PreviewView {
+    fn expire(&mut self) {
+        if self.unlock_armed.as_ref().is_some_and(|(_, at)| at.elapsed() > PREVIEW_UNLOCK_CONFIRM) {
+            self.unlock_armed = None;
+        }
+    }
+
+    fn show(&self, renderer: &mut ScreenRenderer) {
+        renderer.weather_detail = self.weather_detail.clone();
+        renderer.unlock_armed = self.unlock_armed.as_ref().map(|(id, _)| id.clone());
+        renderer.frontlight = Some(!self.frontlight_off);
+    }
+}
+
+#[derive(Deserialize)]
+struct TapRequest {
+    /// Where on the preview, as fractions of its width and height
+    x: f32,
+    y: f32,
+    #[serde(default)]
+    page: usize,
+}
+
+/// A click on the preview, treated as a finger on the Kobo's screen: find
+/// what is under it and do to the preview what the Kobo would do.
+async fn preview_tap(State(s): State<Shared>, Json(req): Json<TapRequest>) -> Json<serde_json::Value> {
+    use crate::ui::layout::UiAction;
+    let config = s.draft.read().await.clone();
+    let ha = s.ha.read().await.clone();
+    let mut view = s.preview_view.lock().await;
+    view.expire();
+    let mut states = ha.get_all_states().await;
+    states.extend(view.changed.clone());
+    let (w, h) = config.device.get_dimensions();
+    let mut page = req.page.min(config.pages.len().saturating_sub(1));
+
+    let action = {
+        let _guard = s.render_lock.lock().await;
+        i18n::set_language(&config.theme.language);
+        prepare_font(&s, &config.theme.language).await;
+        let mut canvas = Canvas::for_screen(w, h);
+        let mut renderer = ScreenRenderer::new(&config);
+        view.show(&mut renderer);
+        renderer.render(&mut canvas, &config, page, &states, true);
+        renderer.handle_touch(req.x.clamp(0.0, 1.0) * w as f32, req.y.clamp(0.0, 1.0) * h as f32)
+    };
+
+    // As on the Kobo: only a second tap on the same lock confirms an unlock.
+    let armed = view.unlock_armed.take();
+    fn simulate(view: &mut PreviewView, states: &mut std::collections::HashMap<String, crate::ha::models::EntityState>, service: &str, data: serde_json::Value) {
+        crate::ha::client::simulate_service(states, service, &data);
+        let ids: Vec<String> = match &data["entity_id"] {
+            serde_json::Value::String(id) => vec![id.clone()],
+            serde_json::Value::Array(list) => list.iter().filter_map(|v| v.as_str().map(str::to_string)).collect(),
+            _ => Vec::new(),
+        };
+        for id in ids {
+            if let Some(state) = states.get(&id) {
+                view.changed.insert(id, state.clone());
+            }
+        }
+    }
+    let entity = |id: &str| serde_json::json!({ "entity_id": id });
+    let name = match action {
+        None => "none",
+        Some(UiAction::SwitchPage(idx)) => {
+            page = idx;
+            view.weather_detail = None;
+            "page"
+        }
+        Some(UiAction::OpenWeatherDay(e, day)) => {
+            view.weather_detail = Some((e, day));
+            "weather_day"
+        }
+        Some(UiAction::CloseDetail) => {
+            view.weather_detail = None;
+            "back"
+        }
+        Some(UiAction::Refresh) => {
+            // The refresh button puts the preview back to the real states.
+            view.changed.clear();
+            "refresh"
+        }
+        Some(UiAction::ToggleFrontlight) => {
+            view.frontlight_off = !view.frontlight_off;
+            "frontlight"
+        }
+        Some(UiAction::ExitToReader) => "exit",
+        Some(UiAction::LockTap(id)) => {
+            let unlocked = states.get(&id).map(|st| crate::ui::widgets::lock_card::is_unlocked(&st.state)).unwrap_or(false);
+            if unlocked {
+                simulate(&mut view, &mut states, "lock", entity(&id));
+            } else if armed.as_ref().is_some_and(|(a, _)| *a == id) {
+                simulate(&mut view, &mut states, "unlock", entity(&id));
+            } else {
+                view.unlock_armed = Some((id, std::time::Instant::now()));
+            }
+            "lock"
+        }
+        Some(UiAction::ToggleEntity(id)) => {
+            simulate(&mut view, &mut states, "toggle", entity(&id));
+            "toggle"
+        }
+        Some(UiAction::SetClimateTemp(id, delta)) => {
+            let now = states.get(&id).and_then(|st| st.get_attr_f32("temperature")).unwrap_or(21.0);
+            let target = ((now + delta) * 2.0).round() / 2.0;
+            simulate(&mut view, &mut states, "set_temperature", serde_json::json!({ "entity_id": id, "temperature": target }));
+            "climate"
+        }
+        Some(UiAction::MediaPlayPause(id)) => {
+            simulate(&mut view, &mut states, "media_play_pause", entity(&id));
+            "media"
+        }
+        Some(UiAction::MediaNext(_)) | Some(UiAction::MediaPrevious(_)) => "media",
+        Some(UiAction::ActivateScene(id)) => {
+            let (_, service, data) = ha.activate_request(&id);
+            simulate(&mut view, &mut states, &service, data);
+            "scene"
+        }
+        Some(UiAction::Service { service, data, .. }) => {
+            simulate(&mut view, &mut states, &service, data);
+            "service"
+        }
+    };
+    Json(serde_json::json!({ "page": page, "action": name }))
+}
+
 async fn preview(State(s): State<Shared>, Query(q): Query<PreviewQuery>) -> Response {
     let config = s.draft.read().await.clone();
     let ha = s.ha.read().await.clone();
-    let states = ha.get_all_states().await;
+    let mut states = ha.get_all_states().await;
     let live = ha.is_connected().await;
     let (w, h) = config.device.get_dimensions();
+    let view = {
+        let mut view = s.preview_view.lock().await;
+        view.expire();
+        states.extend(view.changed.clone());
+        PreviewView { weather_detail: view.weather_detail.clone(), unlock_armed: view.unlock_armed.clone(), frontlight_off: view.frontlight_off, changed: Default::default() }
+    };
 
     let _guard = s.render_lock.lock().await;
     i18n::set_language(&config.theme.language);
@@ -396,8 +549,8 @@ async fn preview(State(s): State<Shared>, Query(q): Query<PreviewQuery>) -> Resp
     let mut canvas = Canvas::for_screen(w, h);
     let mut renderer = ScreenRenderer::new(&config);
     renderer.last_update = ha.last_update().await;
-    // Most Kobos have a frontlight; show its button as on the device.
-    renderer.frontlight = Some(true);
+    // Most Kobos have a frontlight; its button is shown as on the device.
+    view.show(&mut renderer);
     if q.sleep {
         let next = crate::ui::widgets::header::now_local(&config.theme) + chrono::Duration::seconds(config.device.sleep_wake_secs.max(120) as i64);
         renderer.sleep_until = Some(crate::ui::widgets::header::format_time(&next, &config.theme));

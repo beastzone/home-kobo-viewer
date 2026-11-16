@@ -203,6 +203,7 @@ card_types:
   scene: "Pulsante singolo"
 
 preview:
+  click_hint: "Fai clic sull'anteprima per usarla come il Kobo. Le modifiche ai dispositivi sono simulate; nulla viene inviato a casa tua."
   sleep: "Mostra la schermata di sospensione"
   grayscale: "Mostra in scala di grigi"
   refresh: "Aggiorna"

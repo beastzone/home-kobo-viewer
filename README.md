@@ -158,11 +158,12 @@ reinstalling it after a Kobo software update), and the name of the menu entry.
 5. Added **updates over Wi-Fi** for the layout and the program, signed, with
    automatic rollback of a program that fails to start.
 6. Added the **hour-by-hour weather page**, opened by tapping a forecast day.
-7. Translated the new text into all eleven languages the app ships with.
-8. Added automated tests for every addition (89 tests in total pass).
-9. Set the build to publish the Kobo program and the Windows and Linux setup
+7. Made the setup tool's **preview clickable**, as a simulated Kobo.
+8. Translated the new text into all eleven languages the app ships with.
+9. Added automated tests for every addition (89 tests in total pass).
+10. Set the build to publish the Kobo program and the Windows and Linux setup
    tools as a release on every push to `main`.
-10. Brought the phone web panel and the Home Assistant setup guide into this
+11. Brought the phone web panel and the Home Assistant setup guide into this
    repository, so everything is in one place.
 
 ### Confirmed on a real Kobo Aura (v0.5.2, 16 November 2026)
@@ -211,6 +212,17 @@ reinstalling it after a Kobo software update), and the name of the menu entry.
 The Kobo must be on a Wi-Fi network that can reach Home Assistant. A Kobo
 software update removes NickelMenu; run step 5 again afterwards.
 
+## Trying the dashboard in the setup tool
+
+The preview on the right of the **Design** step can be clicked like the Kobo
+is tapped. A click on a page tab changes page (and the page being edited), a
+forecast day opens its hours, a light or a floorplan room switches, a lock
+asks for its second tap, and the refresh button puts everything back.
+
+Device changes in the preview are simulated. Nothing clicked there is sent to
+Home Assistant, so trying the lock card does not unlock the door; the preview
+starts from your devices' real states and shows what the Kobo would show next.
+
 ## Configuration by hand
 
 The setup tool writes `.kobo-ha/config.yaml` on the Kobo. The new cards look
@@ -237,7 +249,7 @@ cargo run -- --simulator   # interactive preview with demo data
 
 Every push to `main` runs `.github/workflows/release.yml`, which builds the
 Kobo program and the Windows and Linux setup tools and publishes them as the
-release for the version in `Cargo.toml` (`v0.5.2`, ...). Raise that version to
+release for the version in `Cargo.toml` (`v0.5.3`, ...). Raise that version to
 get a new release; pushes without a version change refresh the files of the
 existing one.
 

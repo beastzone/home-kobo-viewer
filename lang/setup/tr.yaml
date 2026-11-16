@@ -203,6 +203,7 @@ card_types:
   scene: "Tek buton"
 
 preview:
+  click_hint: "Kobo gibi kullanmak için önizlemeye tıklayın. Cihaz değişiklikleri benzetimdir; evinize hiçbir şey gönderilmez."
   sleep: "Uyku ekranını göster"
   grayscale: "Gri tonlamalı göster"
   refresh: "Yenile"

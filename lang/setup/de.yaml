@@ -203,6 +203,7 @@ card_types:
   scene: "Einzelne Taste"
 
 preview:
+  click_hint: "Klicke auf die Vorschau, um sie wie den Kobo zu bedienen. Geräteänderungen werden simuliert; nichts wird an dein Zuhause gesendet."
   sleep: "Ruhebildschirm anzeigen"
   grayscale: "In Graustufen anzeigen"
   refresh: "Aktualisieren"

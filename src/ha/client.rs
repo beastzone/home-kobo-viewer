@@ -461,41 +461,47 @@ impl HaClient {
     }
 
     async fn apply_mock_service_call(&self, _domain: &str, service: &str, data: &Value) {
-        let mut states = self.states.write().await;
-        // One entity, or a list of them (a floorplan room switches several at once)
-        let ids: Vec<&str> = match data.get("entity_id") {
-            Some(Value::String(id)) => vec![id.as_str()],
-            Some(Value::Array(list)) => list.iter().filter_map(|v| v.as_str()).collect(),
-            _ => Vec::new(),
-        };
-        for entity_id in ids {
-            let Some(state) = states.get_mut(entity_id) else { continue };
-            match service {
-                "toggle" => {
-                    state.state = if state.is_on() { "off" } else { "on" }.to_string();
-                }
-                "turn_on" => {
-                    state.state = "on".to_string();
-                }
-                "turn_off" => {
-                    state.state = "off".to_string();
-                }
-                "set_temperature" => {
-                    if let Some(target) = data.get("temperature").and_then(|v| v.as_f64()) {
-                        state.attributes.insert("temperature".to_string(), serde_json::json!(target));
-                    }
-                }
-                "lock" => {
-                    state.state = "locked".to_string();
-                }
-                "unlock" => {
-                    state.state = "unlocked".to_string();
-                }
-                "media_play_pause" => {
-                    state.state = if state.state == "playing" { "paused" } else { "playing" }.to_string();
-                }
-                _ => {}
+        simulate_service(&mut *self.states.write().await, service, data);
+    }
+}
+
+/// What a service call would do to the states it names, without calling Home
+/// Assistant: the optimistic update on the Kobo, demo mode, and taps in the
+/// setup tool's preview.
+pub fn simulate_service(states: &mut HashMap<String, EntityState>, service: &str, data: &Value) {
+    // One entity, or a list of them (a floorplan room switches several at once)
+    let ids: Vec<&str> = match data.get("entity_id") {
+        Some(Value::String(id)) => vec![id.as_str()],
+        Some(Value::Array(list)) => list.iter().filter_map(|v| v.as_str()).collect(),
+        _ => Vec::new(),
+    };
+    for entity_id in ids {
+        let Some(state) = states.get_mut(entity_id) else { continue };
+        match service {
+            "toggle" => {
+                state.state = if state.is_on() { "off" } else { "on" }.to_string();
             }
+            "turn_on" => {
+                state.state = "on".to_string();
+            }
+            "turn_off" => {
+                state.state = "off".to_string();
+            }
+            "set_temperature" => {
+                if let Some(target) = data.get("temperature").and_then(|v| v.as_f64()) {
+                    state.attributes.insert("temperature".to_string(), serde_json::json!(target));
+                }
+            }
+            "lock" => {
+                state.state = "locked".to_string();
+            }
+            "unlock" => {
+                state.state = "unlocked".to_string();
+            }
+            "media_play_pause" => {
+                state.state = if state.state == "playing" { "paused" } else { "playing" }.to_string();
+            }
+            _ => {}
         }
     }
 }

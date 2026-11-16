@@ -133,7 +133,7 @@ input[type=color] { width: 48px; height: 38px; padding: 2px; border: 1px solid v
 /* Preview */
 aside.preview { position: sticky; top: 76px; align-self: start; }
 .device { background: #2b2f36; border-radius: 26px; padding: 18px 16px 28px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
-.device img { display: block; width: 100%; border-radius: 4px; background: #eee; image-rendering: auto; }
+.device img { cursor: pointer; display: block; width: 100%; border-radius: 4px; background: #eee; image-rendering: auto; }
 .device.landscape { padding: 16px 28px 16px 18px; }
 .preview-pages { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin: 12px 0 6px; }
 .preview-tools { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 13px; }
@@ -456,6 +456,7 @@ a.btn.primary { color: var(--accent-ink); }
 
 <aside class="preview">
   <div class="device" id="deviceFrame"><img id="previewImg" alt=""></div>
+  <p class="hint" style="margin:8px 0 0;text-align:center" data-i18n="preview.click_hint"></p>
   <div class="preview-pages" id="previewPages"></div>
   <div class="preview-tools">
     <div class="row" style="gap:14px">
@@ -1351,6 +1352,24 @@ function renderOverflow() {
 }
 
 // ---------- Preview ----------
+// A click on the preview is a finger on the Kobo: the server finds what is
+// under it and changes the preview the way the device would. Device changes
+// are simulated there, never sent to Home Assistant.
+let armedRedraw = null;
+async function tapPreview(ev) {
+  if (!cfg) return;
+  const b = ev.currentTarget.getBoundingClientRect();
+  if (!b.width || !b.height) return;
+  try {
+    const res = await api("/api/preview/tap", { method: "POST", body: { x: (ev.clientX - b.left) / b.width, y: (ev.clientY - b.top) / b.height, page } });
+    if (res.page !== page) { page = res.page; openCard = null; renderDesign(); }
+    refreshPreview();
+    // A lock waiting for its second tap gives up after six seconds: redraw then.
+    clearTimeout(armedRedraw);
+    if (res.action === "lock") armedRedraw = setTimeout(refreshPreview, 6500);
+  } catch { /* the next refresh shows the real state */ }
+}
+
 function refreshPreview() {
   if (!cfg) return;
   $("deviceFrame").classList.toggle("landscape", cfg.device.orientation === "landscape");
@@ -1529,6 +1548,7 @@ function bindAllFields() {
   $("publishMode").onchange = showPublishMode;
   showPublishMode();
   $("publishBtn").onclick = publishWifi;
+  $("previewImg").onclick = tapPreview;
   showBatteryOpts();
 }
 
