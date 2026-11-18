@@ -118,6 +118,15 @@ pub struct DeviceConfig {
     #[serde(default = "default_sleep_wake_secs")]
     pub sleep_wake_secs: u32,
 
+    /// Your own words for the note shown while asleep, in place of
+    /// "Sleep mode" and the wake hint (e.g. "Press power to wake").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sleep_message: Option<String>,
+
+    /// Leave the time of the next refresh out of the sleep note.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub sleep_hide_next: bool,
+
     /// At or below this battery level (without a charger) show "battery
     /// empty" and sleep until the Kobo is charged (0 = never).
     #[serde(default = "default_battery_critical_percent")]
@@ -169,6 +178,8 @@ impl Default for DeviceConfig {
             frontlight_timeout_secs: 0,
             sleep_after_secs: 0,
             sleep_wake_secs: default_sleep_wake_secs(),
+            sleep_message: None,
+            sleep_hide_next: false,
             battery_critical_percent: default_battery_critical_percent(),
         }
     }

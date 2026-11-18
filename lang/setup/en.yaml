@@ -108,6 +108,8 @@ connect:
   sleep_every_15m: "15 minutes"
   sleep_every_30m: "30 minutes"
   sleep_every_1h: "1 hour"
+  sleep_message: "Your own sleep message (optional)"
+  sleep_hide_next: "Don't show the next update time"
   sleep_hint: "Sleep mode turns the Kobo off between refreshes, which makes the battery last days instead of hours. The screen keeps showing the dashboard with a note; press the power button to use it again. It doesn't sleep while charging."
   utc_hint: "The Kobo keeps its clock in UTC, so the time zone above is what makes the clock correct."
   font_downloading: "Downloading the font this language needs (one time, a few MB)…"

@@ -104,6 +104,8 @@ connect:
   sleep_every_15m: "15 minut"
   sleep_every_30m: "30 minut"
   sleep_every_1h: "godzinę"
+  sleep_message: "Własny komunikat uśpienia (opcjonalnie)"
+  sleep_hide_next: "Nie pokazuj godziny następnej aktualizacji"
   sleep_hint: "Tryb uśpienia wyłącza Kobo między odświeżeniami, dzięki czemu bateria wystarcza na dni zamiast godzin. Ekran nadal pokazuje panel z informacją; naciśnij przycisk zasilania, aby znów z niego korzystać. Podczas ładowania urządzenie nie usypia."
   utc_hint: "Kobo trzyma zegar w UTC, więc to strefa czasowa powyżej sprawia, że godzina jest poprawna."
   font_downloading: "Pobieranie czcionki potrzebnej dla tego języka (jednorazowo, kilka MB)…"

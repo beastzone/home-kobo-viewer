@@ -212,6 +212,27 @@ reinstalling it after a Kobo software update), and the name of the menu entry.
 The Kobo must be on a Wi-Fi network that can reach Home Assistant. A Kobo
 software update removes NickelMenu; run step 5 again afterwards.
 
+## Battery: sleep mode
+
+While the dashboard is open the Kobo stays awake with Wi-Fi connected, which
+empties a 6-inch Kobo's battery in hours rather than weeks. For anything but a
+panel that lives on a charger, turn sleep mode on in the setup tool's
+**Connect** step:
+
+- **Go to sleep after**: how long without a tap before it sleeps.
+- **While asleep, refresh every**: how often it wakes to redraw.
+- **Light off after**: switches the frontlight off sooner.
+
+Asleep, the screen still shows the page you were on, redrawn at each refresh,
+with a note in place of the page tabs. The power button wakes it; taps do
+nothing until then. It does not sleep while charging.
+
+The note's wording is yours to set with **Your own sleep message**, and
+**Don't show the next update time** leaves the time out. The preview's *Show
+the sleep screen* box shows the result.
+
+<p align="center"><img src="docs/images/aura-sleep-message.png" width="380" alt="Dashboard asleep with a custom message"></p>
+
 ## Trying the dashboard in the setup tool
 
 The preview on the right of the **Design** step can be clicked like the Kobo
@@ -249,7 +270,7 @@ cargo run -- --simulator   # interactive preview with demo data
 
 Every push to `main` runs `.github/workflows/release.yml`, which builds the
 Kobo program and the Windows and Linux setup tools and publishes them as the
-release for the version in `Cargo.toml` (`v0.5.3`, ...). Raise that version to
+release for the version in `Cargo.toml` (`v0.5.4`, ...). Raise that version to
 get a new release; pushes without a version change refresh the files of the
 existing one.
 

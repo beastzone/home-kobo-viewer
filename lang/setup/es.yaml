@@ -104,6 +104,8 @@ connect:
   sleep_every_15m: "15 minutos"
   sleep_every_30m: "30 minutos"
   sleep_every_1h: "hora"
+  sleep_message: "Tu propio mensaje de reposo (opcional)"
+  sleep_hide_next: "No mostrar la hora de la próxima actualización"
   sleep_hint: "El modo reposo apaga el Kobo entre actualizaciones, así la batería dura días en lugar de horas. La pantalla sigue mostrando el panel con una nota; pulsa el botón de encendido para volver a usarlo. No entra en reposo mientras se carga."
   utc_hint: "El Kobo guarda su reloj en UTC; la zona horaria de arriba es lo que hace que la hora sea correcta."
   font_downloading: "Descargando la fuente que necesita este idioma (una sola vez, unos MB)…"

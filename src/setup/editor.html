@@ -367,6 +367,10 @@ a.btn.primary { color: var(--accent-ink); }
           </select>
         </label>
       </div>
+      <div class="grid2" style="margin-top:14px">
+        <label class="field"><span data-i18n="connect.sleep_message"></span> <input id="sleepMessage" type="text" maxlength="60"></label>
+        <label class="check" style="align-self:end"><input type="checkbox" id="sleepHideNext"> <span data-i18n="connect.sleep_hide_next"></span></label>
+      </div>
       <p class="hint" style="margin-top:12px" data-i18n="connect.sleep_hint"></p>
       <div id="fontNote" class="notice warn hidden"></div>
       <p class="hint" style="margin-top:14px" data-i18n="connect.utc_hint"></p>
@@ -785,6 +789,11 @@ function bindConnect() {
   bind("lightTimeout", () => String(cfg.device.frontlight_timeout_secs || 0), (v) => (cfg.device.frontlight_timeout_secs = parseInt(v) || 0), "change");
   bind("sleepAfter", () => String(cfg.device.sleep_after_secs || 0), (v) => (cfg.device.sleep_after_secs = parseInt(v) || 0), "change");
   bind("sleepWake", () => String(cfg.device.sleep_wake_secs || 900), (v) => (cfg.device.sleep_wake_secs = parseInt(v) || 900), "change");
+  bind("sleepMessage", () => cfg.device.sleep_message, (v) => { if (v.trim()) cfg.device.sleep_message = v; else delete cfg.device.sleep_message; });
+  $("sleepHideNext").addEventListener("change", () => {
+    if ($("sleepHideNext").checked) cfg.device.sleep_hide_next = true; else delete cfg.device.sleep_hide_next;
+    sync();
+  });
   bind("language", () => cfg.theme.language, (v) => { cfg.theme.language = v; ensureFont(); }, "change");
   $("model").addEventListener("change", () => { $("modelNote").classList.add("hidden"); setModel($("model").value); });
   $("reportBattery").addEventListener("change", () => {
@@ -1543,6 +1552,8 @@ function bindAllFields() {
     ["batteryEntity", cfg.home_assistant.battery_entity || "sensor.kobo_battery"]]) {
     $(id).value = v ?? "";
   }
+  $("sleepMessage").value = cfg.device.sleep_message || "";
+  $("sleepHideNext").checked = !!cfg.device.sleep_hide_next;
   $("publishDir").value = (cfg.updates && cfg.updates.publish_dir) || suggestedPublishDir();
   $("publishMode").value = cfg.updates && cfg.updates.publish_dir ? "folder" : "direct";
   $("publishMode").onchange = showPublishMode;

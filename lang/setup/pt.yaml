@@ -104,6 +104,8 @@ connect:
   sleep_every_15m: "15 minutos"
   sleep_every_30m: "30 minutos"
   sleep_every_1h: "1 hora"
+  sleep_message: "A sua mensagem de suspensão (opcional)"
+  sleep_hide_next: "Não mostrar a hora da próxima atualização"
   sleep_hint: "O modo de suspensão desliga o Kobo entre as atualizações, e a bateria dura dias em vez de horas. A tela continua mostrando o painel com um aviso; pressione o botão liga/desliga para usá-lo de novo. Não suspende enquanto carrega."
   utc_hint: "O Kobo mantém o relógio em UTC; é o fuso horário acima que deixa a hora correta."
   font_downloading: "Baixando a fonte necessária para este idioma (uma única vez, alguns MB)…"

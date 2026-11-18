@@ -104,6 +104,8 @@ connect:
   sleep_every_15m: "每 15 分钟"
   sleep_every_30m: "每 30 分钟"
   sleep_every_1h: "每小时"
+  sleep_message: "自定义休眠提示（可选）"
+  sleep_hide_next: "不显示下次更新时间"
   sleep_hint: "睡眠模式会在两次刷新之间让 Kobo 休眠，电池续航可从几小时延长到几天。屏幕会继续显示仪表板并附带提示；按电源键即可重新使用。充电时不会进入睡眠。"
   utc_hint: "Kobo 以 UTC 记录时间，上面的时区设置才能让时钟显示正确。"
   font_downloading: "正在下载此语言所需的字体（仅一次，几 MB）…"

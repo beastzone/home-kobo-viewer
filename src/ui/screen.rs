@@ -204,6 +204,10 @@ pub struct ScreenRenderer {
     /// While in sleep mode: the time of the next timed refresh, shown in a
     /// note at the bottom of the screen
     pub sleep_until: Option<String>,
+    /// The owner's words for the sleep note, if any, and whether the note
+    /// names the next refresh
+    pub sleep_message: Option<String>,
+    pub sleep_hide_next: bool,
     /// Draw the "battery empty" screen instead of the dashboard
     pub battery_empty: bool,
     /// Weather day open as a full page: (weather entity, that day's forecast time)
@@ -223,6 +227,8 @@ impl ScreenRenderer {
             last_update: None,
             frontlight: None,
             sleep_until: None,
+            sleep_message: config.device.sleep_message.as_deref().map(str::trim).filter(|m| !m.is_empty()).map(str::to_string),
+            sleep_hide_next: config.device.sleep_hide_next,
             battery_empty: false,
             unlock_armed: None,
             weather_detail: None,
@@ -331,19 +337,48 @@ impl ScreenRenderer {
         canvas.draw_icon("moon", ix, bar.y + (bar.h - icon) / 2.0, icon, theme.surface, 2.2);
         let tx = ix + icon + 18.0;
         let max_w = bar.x + bar.w - bar.h * 0.4 - tx;
+        // The owner's own message takes the place of "Sleep mode" and of the
+        // wake hint; the time of the next refresh can be left out as well.
+        let custom = self.sleep_message.as_deref();
+        let time = i18n::tf("sleep.next", &[("time", next)]);
         if bar.h < 80.0 {
             // One line: "Sleep mode · Next update 22:56" then the hint, muted
-            let (line, size) = sleep_line(canvas, next, max_w, 24.0);
+            let (line, size) = match (custom, self.sleep_hide_next) {
+                (None, false) => sleep_line(canvas, next, max_w, 24.0),
+                (None, true) => (i18n::t("sleep.title"), 24.0),
+                (Some(message), true) => (message.to_string(), 24.0),
+                (Some(message), false) => {
+                    // The time gives way before the message is cut short
+                    let both = format!("{} · {}", message, time);
+                    let fits = canvas.measure_text(&both, 24.0, true).0 <= max_w;
+                    (if fits { both } else { message.to_string() }, 24.0)
+                }
+            };
             let tw = canvas.draw_text_fit(&line, tx, bar.y + bar.h / 2.0 - size / 2.0, size, true, theme.surface, TextAlign::Left, max_w);
             let hint_x = tx + tw + 18.0;
-            if hint_x + 120.0 < tx + max_w {
+            if custom.is_none() && hint_x + 120.0 < tx + max_w {
                 let muted = theme.surface.mix(theme.text, 0.35);
                 canvas.draw_text_fit(&i18n::t("sleep.wake_hint"), hint_x, bar.y + bar.h / 2.0 - 11.0, 22.0, false, muted, TextAlign::Left, tx + max_w - hint_x);
             }
         } else {
-            let (line, size) = sleep_line(canvas, next, max_w, 26.0);
-            canvas.draw_text_fit(&line, tx, bar.y + 16.0 + (26.0 - size) / 2.0, size, true, theme.surface, TextAlign::Left, max_w);
-            canvas.draw_text_fit(&i18n::t("sleep.wake_hint"), tx, bar.y + 52.0, 22.0, false, theme.surface, TextAlign::Left, max_w);
+            let (line, size, second) = match (custom, self.sleep_hide_next) {
+                (None, false) => {
+                    let (line, size) = sleep_line(canvas, next, max_w, 26.0);
+                    (line, size, Some(i18n::t("sleep.wake_hint")))
+                }
+                (None, true) => (i18n::t("sleep.title"), 26.0, Some(i18n::t("sleep.wake_hint"))),
+                (Some(message), false) => (message.to_string(), 26.0, Some(time)),
+                (Some(message), true) => (message.to_string(), 26.0, None),
+            };
+            match second {
+                Some(second) => {
+                    canvas.draw_text_fit(&line, tx, bar.y + 16.0 + (26.0 - size) / 2.0, size, true, theme.surface, TextAlign::Left, max_w);
+                    canvas.draw_text_fit(&second, tx, bar.y + 52.0, 22.0, false, theme.surface, TextAlign::Left, max_w);
+                }
+                None => {
+                    canvas.draw_text_fit(&line, tx, bar.y + bar.h / 2.0 - size / 2.0, size, true, theme.surface, TextAlign::Left, max_w);
+                }
+            }
         }
     }
 
@@ -773,6 +808,40 @@ mod tests {
         assert_eq!(hours_of_day(Some(&state), day(15), ny).len(), 5);
         assert!(hours_of_day(Some(&state), day(20), utc).is_empty(), "beyond the hourly forecast");
         assert!(hours_of_day(None, day(16), utc).is_empty());
+    }
+
+    #[test]
+    fn the_sleep_note_can_carry_the_owners_message() {
+        let _guard = crate::i18n::TEST_LANGUAGE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        crate::i18n::set_language("en");
+        let states = crate::ha::mock::generate_mock_states();
+        let frame = |message: Option<&str>, hide_next: bool, pages: usize| {
+            let mut config = AppConfig::default();
+            config.theme.mode = "high_contrast_bw".to_string();
+            config.pages.truncate(pages);
+            config.device.sleep_message = message.map(str::to_string);
+            config.device.sleep_hide_next = hide_next;
+            let mut canvas = Canvas::for_screen(758, 1024);
+            let mut renderer = ScreenRenderer::new(&config);
+            renderer.sleep_until = Some("22:56".to_string());
+            renderer.render(&mut canvas, &config, 0, &states, true);
+            assert!(renderer.targets.is_empty(), "nothing is tappable while asleep");
+            (canvas.to_grayscale_png_bytes().unwrap(), renderer.sleep_message.clone())
+        };
+        // With tabs the note is one line in their place; with a single page
+        // it is a taller bar at the bottom. Both draw each variant differently.
+        for pages in [2, 1] {
+            let (standard, none) = frame(None, false, pages);
+            let (custom, kept) = frame(Some("  Tap power to wake  "), false, pages);
+            let (custom_no_time, _) = frame(Some("Tap power to wake"), true, pages);
+            let (blank, blank_kept) = frame(Some("   "), false, pages);
+            assert_eq!((none, kept.as_deref(), blank_kept), (None, Some("Tap power to wake"), None));
+            assert!(standard != custom && custom != custom_no_time, "pages: {}", pages);
+            assert!(standard == blank, "an empty message is no message");
+            if let Ok(dir) = std::env::var("KOBO_PREVIEW_DIR") {
+                std::fs::write(format!("{}/sleep-{}.png", dir, pages), &custom).unwrap();
+            }
+        }
     }
 
     #[test]

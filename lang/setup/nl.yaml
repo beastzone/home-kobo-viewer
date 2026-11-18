@@ -104,6 +104,8 @@ connect:
   sleep_every_15m: "elk kwartier"
   sleep_every_30m: "elk halfuur"
   sleep_every_1h: "elk uur"
+  sleep_message: "Eigen slaapbericht (optioneel)"
+  sleep_hide_next: "Tijd van de volgende update niet tonen"
   sleep_hint: "De slaapstand zet de Kobo uit tussen updates; de batterij gaat zo dagen mee in plaats van uren. Het scherm blijft het dashboard tonen met een melding; druk op de aan/uit-knop om het weer te gebruiken. Tijdens het opladen slaapt hij niet."
   utc_hint: "De Kobo houdt zijn klok bij in UTC; de tijdzone hierboven zorgt voor de juiste tijd."
   font_downloading: "Het lettertype voor deze taal wordt gedownload (eenmalig, enkele MB)…"

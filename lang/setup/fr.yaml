@@ -104,6 +104,8 @@ connect:
   sleep_every_15m: "15 minutes"
   sleep_every_30m: "30 minutes"
   sleep_every_1h: "heures"
+  sleep_message: "Votre message de veille (facultatif)"
+  sleep_hide_next: "Ne pas afficher l'heure de la prochaine mise à jour"
   sleep_hint: "Le mode veille éteint la Kobo entre deux actualisations : la batterie tient des jours au lieu de quelques heures. L'écran continue d'afficher le tableau de bord avec une note ; appuyez sur le bouton d'alimentation pour l'utiliser à nouveau. Pas de veille pendant la charge."
   utc_hint: "La Kobo garde son horloge en UTC : c'est le fuseau horaire ci-dessus qui affiche l'heure correcte."
   font_downloading: "Téléchargement de la police nécessaire à cette langue (une seule fois, quelques Mo)…"
